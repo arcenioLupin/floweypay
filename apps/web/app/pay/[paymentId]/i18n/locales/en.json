@@ -1,0 +1,52 @@
+{
+  "brandSubtitle": "Payment Link (BTC • fiat-first)",
+  "rateLockPill": "Rate lock: 15m",
+
+  "network_MAINNET": "Mainnet",
+  "network_TESTNET": "Test network (Testnet)",
+  "network_SIGNET": "Test network (Signet)",
+  "network_REGTEST": "Local (Regtest)",
+
+  "bannerExpiredTitle": "Expired.",
+  "bannerExpiredBody": "The locked exchange rate expired. (CTA: regenerate invoice)",
+  "bannerFailedTitle": "Failed.",
+  "bannerFailedBody": "This payment could not be processed. (CTA: support / retry)",
+
+  "cardQrTitle": "QR + Address",
+  "copy": "COPY",
+  "copied": "COPIED",
+  "copiedOk": "Address copied ✅",
+  "copiedFail": "Couldn't copy 😅",
+  "openWallet": "Open in wallet",
+  "uriHint": "URI",
+
+  "cardDetailsTitle": "Payment details",
+
+  "labelAmount": "AMOUNT",
+  "labelLockedRate": "Locked exchange rate",
+  "labelExpiration": "EXPIRATION",
+  "labelStatus": "STATUS",
+
+  "satsSuffix": "sats",
+  "validUntil": "Valid until",
+  "confirmationsShort": "confs",
+
+  "detailsToggle": "Details",
+  "tech_txid": "txid",
+  "tech_detectedAt": "detected_at",
+  "tech_rateLockedAt": "rate_locked_at",
+  "tech_statusRaw": "status_raw",
+
+  "timelineTitle": "STATUS TIMELINE",
+  "step": "Step",
+  "timeline_awaiting": "Awaiting payment",
+  "timeline_mempool": "Seen in mempool",
+  "timeline_confirming": "Confirming (≥1)",
+  "timeline_confirmed": "Confirmed",
+
+  "terminalStatesLabel": "Terminal states",
+  "terminalExpired": "EXPIRED → “Regenerate invoice”",
+  "terminalFailed": "FAILED → support/retry CTA",
+  "regenerateInvoice": "Regenerate invoice",
+  "regenerating": "Regenerating..."
+}

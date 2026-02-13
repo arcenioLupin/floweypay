@@ -1,0 +1,21 @@
+{
+  "name": "@floweypay/db",
+  "private": true,
+  "version": "0.0.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "prisma": { "schema": "prisma/schema.prisma" },
+  "scripts": {
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "prisma": "^6.19.2",
+    "typescript": "^5"
+  }
+}

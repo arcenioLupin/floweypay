@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: floweypay_db
+    environment:
+      POSTGRES_USER: floweypay
+      POSTGRES_PASSWORD: floweypay
+      POSTGRES_DB: floweypay
+    ports:
+      - "5433:5432"
+    volumes:
+      - floweypay_db_data:/var/lib/postgresql/data
+
+volumes:
+  floweypay_db_data:

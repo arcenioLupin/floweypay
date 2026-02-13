@@ -1,0 +1,53 @@
+{
+  "brandSubtitle": "Link de pago (BTC • fiat-first)",
+  "rateLockPill": "TC bloqueado: 15m",
+
+  "network_MAINNET": "Mainnet",
+  "network_TESTNET": "Red de prueba (Testnet)",
+  "network_SIGNET": "Red de prueba (Signet)",
+  "network_REGTEST": "Local (Regtest)",
+
+  "bannerExpiredTitle": "Expirado.",
+  "bannerExpiredBody": "El tipo de cambio bloqueado venció. (CTA: regenerar invoice)",
+  "bannerFailedTitle": "Falló.",
+  "bannerFailedBody": "No se pudo procesar este pago. (CTA: soporte / reintentar)",
+
+  "cardQrTitle": "QR + Dirección",
+  "copy": "COPIAR",
+  "copied": "COPIADO",
+  "copiedOk": "Dirección copiada ✅",
+  "copiedFail": "No se pudo copiar 😅",
+  "openWallet": "Abrir en wallet",
+  "uriHint": "URI",
+
+  "cardDetailsTitle": "Detalles del pago",
+
+  "labelAmount": "MONTO",
+  "labelLockedRate": "Tipo de cambio bloqueado",
+  "labelExpiration": "EXPIRACIÓN",
+  "labelStatus": "ESTADO",
+
+  "satsSuffix": "sats",
+  "validUntil": "Válido hasta",
+  "confirmationsShort": "confs",
+
+  "detailsToggle": "Detalles",
+  "tech_txid": "txid",
+  "tech_detectedAt": "detected_at",
+  "tech_rateLockedAt": "rate_locked_at",
+  "tech_statusRaw": "status_raw",
+
+  "timelineTitle": "LÍNEA DE ESTADO",
+  "step": "Paso",
+  "timeline_awaiting": "Esperando pago",
+  "timeline_mempool": "Visto en mempool",
+  "timeline_confirming": "Confirmando (≥1)",
+  "timeline_confirmed": "Confirmado",
+
+  "terminalStatesLabel": "Estados terminales",
+  "terminalExpired": "EXPIRED → “Regenerate invoice”",
+  "terminalFailed": "FAILED → soporte/reintentar CTA",
+  "regenerateInvoice": "Regenerar invoice",
+  "regenerating": "Regenerando..."
+  
+}

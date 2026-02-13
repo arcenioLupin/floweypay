@@ -1,0 +1,17 @@
+{
+  "name": "@floweypay/worker",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@floweypay/db": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "@types/node": "^20"
+  }
+}
