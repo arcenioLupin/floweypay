@@ -34,3 +34,23 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## BTC Hardening Notes
+
+- Rounding policy: fiat -> sats conversion uses deterministic ceil rounding to avoid under-collecting due to decimal truncation.
+- Rate service: quotes are cached in memory by fiat currency with TTL (`BTC_RATE_CACHE_TTL_MS`).
+- Fallback behavior: if provider fetch fails, service returns non-expired cache value; if no cache exists, API fails with a clear error code.
+
+### BTC environment flags
+
+- `BTC_SUPPORTED_FIAT_CURRENCIES` default: `USD,PEN`
+- `BTC_MAX_AMOUNT_CENTS` default: `10000000`
+- `BTC_MAX_SATS` default: `5000000000`
+- `BTC_RATE_CACHE_TTL_MS` default: `30000`
+- `BTC_RATE_PROVIDER`: `mock | coingecko | none`
+- `BTC_ADDRESS_SOURCE`: `mock | rpc | none`
+- `BTC_ALLOW_MOCKS` default:
+	- non-production: `true`
+	- production: `false`
+
+In production, if mocks are disabled and a real rate provider or address source is not configured, start endpoint returns a clear `503` (`BTC_RATE_PROVIDER_UNAVAILABLE` or `BTC_ADDRESS_SOURCE_UNAVAILABLE`) and logs an actionable message.
