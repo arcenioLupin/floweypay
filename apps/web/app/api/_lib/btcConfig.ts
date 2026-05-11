@@ -1,4 +1,7 @@
 import { btc_network } from "@prisma/client";
+import { validateWebEnv } from "@/app/lib/env/webEnv";
+
+validateWebEnv();
 
 export type BtcRateProviderMode = "mock" | "coingecko" | "none";
 export type BtcAddressSourceMode = "mock" | "rpc" | "none";
@@ -14,6 +17,7 @@ export type BtcRuntimeConfig = {
   maxAmountCents: number;
   maxSats: bigint;
   rateLockMinutes: number;
+  requiredConfirmations: number;
 };
 
 const DEFAULT_SUPPORTED_CURRENCIES = ["USD", "PEN"];
@@ -21,6 +25,7 @@ const DEFAULT_RATE_CACHE_TTL_MS = 30_000;
 const DEFAULT_MAX_AMOUNT_CENTS = 10_000_000; // 100,000.00 fiat
 const DEFAULT_MAX_SATS = 5_000_000_000n; // 50 BTC
 const DEFAULT_RATE_LOCK_MINUTES = 15;
+const DEFAULT_REQUIRED_CONFIRMATIONS = 1;
 
 function parsePositiveInt(raw: string | undefined, fallback: number): number {
   const n = Number(raw);
@@ -95,5 +100,9 @@ export function getBtcRuntimeConfig(): BtcRuntimeConfig {
     maxAmountCents: parsePositiveInt(process.env.BTC_MAX_AMOUNT_CENTS, DEFAULT_MAX_AMOUNT_CENTS),
     maxSats: BigInt(parsePositiveInt(process.env.BTC_MAX_SATS, Number(DEFAULT_MAX_SATS))),
     rateLockMinutes: parsePositiveInt(process.env.BTC_RATE_LOCK_MINUTES, DEFAULT_RATE_LOCK_MINUTES),
+    requiredConfirmations: parsePositiveInt(
+      process.env.BTC_REQUIRED_CONFIRMATIONS,
+      DEFAULT_REQUIRED_CONFIRMATIONS
+    ),
   };
 }

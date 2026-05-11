@@ -23,6 +23,9 @@
   "cardDetailsTitle": "Detalles del pago",
 
   "labelAmount": "MONTO",
+  "labelReceived": "Recibido",
+  "labelRemaining": "Restante",
+  "labelOverpaid": "Excedente",
   "labelLockedRate": "Tipo de cambio bloqueado",
   "labelExpiration": "EXPIRACIÓN",
   "labelStatus": "ESTADO",

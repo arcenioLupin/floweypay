@@ -81,7 +81,7 @@ test("uses cached rate when provider is unavailable", async () => {
 
   prismaRoot.$transaction = async (cb: GenericFn) => {
     const tx = {
-      $queryRaw: async () => null,
+      $executeRaw: async () => null,
       payments: {
         findFirst: async () => ({ id: "cached-rate-payment" }),
         create: async () => ({ id: "cached-rate-payment" }),

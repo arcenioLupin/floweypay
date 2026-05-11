@@ -2,19 +2,18 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "../../../lib/prisma";
 import { hashSessionToken } from "../../../lib/auth/session";
-
-const SESSION_COOKIE = "fp_session"; // usa el mismo nombre exacto que setea verify-code
+import { SESSION_COOKIE_NAME } from "@/app/lib/auth/cookie";
 
 export async function POST() {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   // respuesta OK siempre (logout idempotente)
   const res = NextResponse.json({ ok: true });
 
   // borrar cookie
   res.cookies.set({
-    name: SESSION_COOKIE,
+    name: SESSION_COOKIE_NAME,
     value: "",
     httpOnly: true,
     sameSite: "lax",

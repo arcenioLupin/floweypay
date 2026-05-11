@@ -77,8 +77,15 @@ export async function getRateWithFallback(currency: string): Promise<FxRateQuote
 
     return { rate: fresh.rate, provider: fresh.provider, fetchedAt: new Date(nowMs) };
   } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+
     if (err instanceof Error && err.message === "BTC_RATE_PROVIDER_UNAVAILABLE") {
       if (cached && cached.expiresAtMs > nowMs) {
+        console.warn("[fxrate] provider unavailable, serving stale cache:", {
+          currency: key,
+          provider: cached.provider,
+          cacheAgeMs: nowMs - cached.fetchedAtMs,
+        });
         return {
           rate: cached.rate,
           provider: `${cached.provider}:cache`,
@@ -86,10 +93,17 @@ export async function getRateWithFallback(currency: string): Promise<FxRateQuote
         };
       }
 
+      console.error("[fxrate] provider unavailable, no cache fallback:", { currency: key });
       throw new Error("BTC_RATE_PROVIDER_UNAVAILABLE");
     }
 
     if (cached && cached.expiresAtMs > nowMs) {
+      console.warn("[fxrate] provider error, serving stale cache:", {
+        currency: key,
+        provider: cached.provider,
+        error: errMsg,
+        cacheAgeMs: nowMs - cached.fetchedAtMs,
+      });
       return {
         rate: cached.rate,
         provider: `${cached.provider}:cache`,
@@ -97,6 +111,7 @@ export async function getRateWithFallback(currency: string): Promise<FxRateQuote
       };
     }
 
+    console.error("[fxrate] provider error, no cache fallback:", { currency: key, error: errMsg });
     throw new Error("BTC_RATE_UNAVAILABLE");
   }
 }

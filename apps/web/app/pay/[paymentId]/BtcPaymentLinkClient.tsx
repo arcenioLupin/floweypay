@@ -205,6 +205,20 @@ const BtcPaymentLinkClient = ({ paymentId }: { paymentId: string }) => {
                 {formatFiat(vm.fiatAmountCents, vm.currency, locale)}
               </div>
             </div>
+
+            {vm.btcReceivedSats > 0n && vm.btcRemainingSats > 0n && (
+              <div className={styles.mono} style={{ marginTop: 6, fontSize: "0.85em" }}>
+                {t("labelReceived") ?? "Received"}: {formatSats(vm.btcReceivedSats)} / {formatSats(vm.btcAmountSats)} {t("satsSuffix")}
+                {" — "}
+                {t("labelRemaining") ?? "Remaining"}: {formatSats(vm.btcRemainingSats)} {t("satsSuffix")}
+              </div>
+            )}
+
+            {vm.btcOverpaidSats > 0n && (
+              <div className={styles.mono} style={{ marginTop: 6, fontSize: "0.85em", opacity: 0.8 }}>
+                {t("labelOverpaid") ?? "Overpaid"}: +{formatSats(vm.btcOverpaidSats)} {t("satsSuffix")}
+              </div>
+            )}
           </div>
 
           <div className={styles.block}>

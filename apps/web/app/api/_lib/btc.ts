@@ -1,6 +1,6 @@
 import { Prisma, btc_network } from "@prisma/client";
 import { getBtcRuntimeConfig } from "@/app/api/_lib/btcConfig";
-import { btcRpcCall } from "@/app/api/_lib/bitcoinRpc";
+import { getNewInvoiceAddress } from "@/app/api/_lib/bitcoinRpc";
 
 const BECH32_MAINNET = /^bc1[ac-hj-np-z02-9]{11,87}$/;
 const BECH32_TESTNET_FAMILY = /^(tb1|bcrt1)[ac-hj-np-z02-9]{11,87}$/;
@@ -19,6 +19,10 @@ export function getBtcNetwork(): btc_network {
 
 export function getRateLockMinutes() {
   return getBtcRuntimeConfig().rateLockMinutes;
+}
+
+export function getRequiredConfirmations() {
+  return getBtcRuntimeConfig().requiredConfirmations;
 }
 
 export function isSupportedCurrency(currency: string): boolean {
@@ -53,7 +57,7 @@ export function validateSats(sats: bigint): BtcValidationErrorCode | null {
 
 function assertMockAllowed(kind: "rate" | "address") {
   const cfg = getBtcRuntimeConfig();
-  if (!cfg.allowMocks && cfg.nodeEnv === "production") {
+  if (!cfg.allowMocks) {
     const code = kind === "rate" ? "BTC_RATE_PROVIDER_UNAVAILABLE" : "BTC_ADDRESS_SOURCE_UNAVAILABLE";
     throw new Error(code);
   }
@@ -81,10 +85,17 @@ export async function allocateBtcAddress(network: btc_network): Promise<string> 
   }
 
   if (cfg.addressSource === "rpc") {
-    const address = await btcRpcCall<string>("getnewaddress", ["floweypay"]);
+    let address = "";
+    try {
+      address = await getNewInvoiceAddress();
+    } catch {
+      throw new Error("BTC_ADDRESS_SOURCE_UNAVAILABLE");
+    }
+
     if (!isAddressValidForNetwork(address, network)) {
       throw new Error("BTC_ADDRESS_INVALID_FOR_NETWORK");
     }
+
     return address;
   }
 

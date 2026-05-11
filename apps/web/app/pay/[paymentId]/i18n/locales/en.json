@@ -23,6 +23,9 @@
   "cardDetailsTitle": "Payment details",
 
   "labelAmount": "AMOUNT",
+  "labelReceived": "Received",
+  "labelRemaining": "Remaining",
+  "labelOverpaid": "Overpaid",
   "labelLockedRate": "Locked exchange rate",
   "labelExpiration": "EXPIRATION",
   "labelStatus": "STATUS",

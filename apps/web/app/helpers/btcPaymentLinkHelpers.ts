@@ -42,6 +42,8 @@ export function formatSats(sats: bigint) {
 
 export function statusStepIndex(status: PaymentStatus) {
   switch (status) {
+    case "PENDING":
+      return 0;
     case "AWAITING_PAYMENT":
       return 1;
     case "SEEN_IN_MEMPOOL":
@@ -86,14 +88,13 @@ function normalizeStatus(raw: string): PaymentStatus {
   const s = (raw ?? "").toUpperCase().trim();
 
   const allowed: PaymentStatus[] = [
+    "PENDING",
     "AWAITING_PAYMENT",
     "SEEN_IN_MEMPOOL",
     "CONFIRMING",
     "CONFIRMED",
     "EXPIRED",
     "FAILED",
-    // 👇 opcional recomendado: si tu API puede devolverlo
-    // "PENDING",
   ];
 
   if ((allowed as string[]).includes(s)) return s as PaymentStatus;
@@ -130,12 +131,21 @@ function parseSatsToBigInt(value: unknown): bigint {
   }
 
   if (typeof value === "string") {
-    const s = value.trim().replace(/,/g, ""); // por si viene "345,678"
+    const s = value.trim().replace(/,/g, "");
     if (!/^\d+$/.test(s)) throw new Error("INVALID_SATS");
     return BigInt(s);
   }
 
   throw new Error("INVALID_SATS");
+}
+
+function parseSatsOrZero(value: unknown): bigint {
+  if (value == null) return 0n;
+  try {
+    return parseSatsToBigInt(value);
+  } catch {
+    return 0n;
+  }
 }
 
 
@@ -171,6 +181,9 @@ export function invoiceToPaymentLinkVM(inv: InvoiceVm): PaymentLinkVM {
     currency, // ✅ usar la normalizada
 
     btcAmountSats: parseSatsToBigInt(inv.btcAmountSats),
+    btcReceivedSats: parseSatsOrZero(inv.btcReceivedSats),
+    btcRemainingSats: parseSatsOrZero(inv.btcRemainingSats),
+    btcOverpaidSats: parseSatsOrZero(inv.btcOverpaidSats),
     btcAddress: inv.btcAddress,
     btcNetwork: normalizeNetwork(inv.btcNetwork),
 

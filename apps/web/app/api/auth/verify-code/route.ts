@@ -7,6 +7,7 @@ import {
   hashSessionToken,
   sessionExpiresAt,
 } from "../../../lib/auth/session";
+import { SESSION_COOKIE_NAME } from "@/app/lib/auth/cookie";
 
 const OTP_MAX_AGE_MINUTES = 10;
 
@@ -87,7 +88,7 @@ export async function POST(req: Request) {
 
     const cookiesStore = await cookies();
     cookiesStore.set({
-      name: "fp_session",
+      name: SESSION_COOKIE_NAME,
       value: token,
       httpOnly: true,
       secure: isProd,

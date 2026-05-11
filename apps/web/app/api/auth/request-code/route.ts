@@ -7,6 +7,20 @@ import { otpEmailTemplate } from "@/app/lib/mail/templates/otp";
 const OTP_TTL_MINUTES = 10;
 const OTP_COOLDOWN_SECONDS = 60;
 
+type EmailMode = "console" | "live";
+
+function getEmailMode(): EmailMode {
+  const raw = process.env.AUTH_EMAIL_MODE;
+  if (!raw) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("MISSING_ENV_AUTH_EMAIL_MODE");
+    }
+    return "console";
+  }
+  if (raw === "console" || raw === "live") return raw;
+  throw new Error(`INVALID_AUTH_EMAIL_MODE: "${raw}" — expected "console" or "live"`);
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
@@ -40,21 +54,26 @@ export async function POST(req: Request) {
       data: { email, code_hash: codeHash, expires_at: expiresAt },
     });
 
-    console.log(`[FloweyPay OTP] email=${email} expires=${expiresAt.toISOString()}`);
+    const emailMode = getEmailMode();
 
-    const tpl = otpEmailTemplate({ code, minutesValid: OTP_TTL_MINUTES });
-
-    try {
-      await sendEmail({
-        to: email,
-        subject: tpl.subject,
-        text: tpl.text,
-        html: tpl.html,
-      });
-    } catch (e) {
-      // 2) si no se pudo enviar, revertimos el registro
-      await prisma.login_codes.delete({ where: { id: created.id } });
-      throw e;
+    if (emailMode === "console") {
+      console.log(
+        `[FloweyPay OTP] [console mode] email=${email} code=${code} expires=${expiresAt.toISOString()}`
+      );
+    } else {
+      const tpl = otpEmailTemplate({ code, minutesValid: OTP_TTL_MINUTES });
+      try {
+        await sendEmail({
+          to: email,
+          subject: tpl.subject,
+          text: tpl.text,
+          html: tpl.html,
+        });
+      } catch (e) {
+        // 2) si no se pudo enviar, revertimos el registro
+        await prisma.login_codes.delete({ where: { id: created.id } });
+        throw e;
+      }
     }
 
     return NextResponse.json({ ok: true });

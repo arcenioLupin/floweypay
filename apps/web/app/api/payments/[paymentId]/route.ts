@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/app/lib/prisma";
 import { payment_status } from "@prisma/client";
+import { prisma } from "@/app/lib/prisma";
+import { requireUserId } from "@/app/api/_lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +15,26 @@ const ACTIVE_STATUSES: payment_status[] = [
 
 export async function GET(
   _req: Request,
-  { params }: { params: Promise<{ paymentId: string }>  }
+  { params }: { params: Promise<{ paymentId: string }> }
 ) {
-   const { paymentId } = await params; // ✅ FIX
+  let userId: string;
+  try {
+    userId = await requireUserId();
+  } catch {
+    return NextResponse.json(
+      { success: false, message: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
+
+  const { paymentId } = await params;
   const now = new Date();
 
   const p = await prisma.payments.findFirst({
-    where: { id: paymentId },
+    where: {
+      id: paymentId,
+      creator_id: userId,   // ← IDOR guard: only the owner can fetch
+    },
     select: {
       id: true,
       status: true,
@@ -41,16 +55,10 @@ export async function GET(
       btc_detected_at: true,
 
       products: {
-        select: {
-          title: true,
-          message: true,
-        },
+        select: { title: true, message: true },
       },
-
       payment_links: {
-        select: {
-          token: true,
-        },
+        select: { token: true },
       },
     },
   });
@@ -62,7 +70,8 @@ export async function GET(
     );
   }
 
-  const isTimeExpired = !!p.btc_expires_at && p.btc_expires_at.getTime() <= now.getTime();
+  const isTimeExpired =
+    !!p.btc_expires_at && p.btc_expires_at.getTime() <= now.getTime();
   const effectiveStatus =
     isTimeExpired && ACTIVE_STATUSES.includes(p.status)
       ? payment_status.EXPIRED
@@ -79,10 +88,17 @@ export async function GET(
         fiatAmountCents: p.amount_cents,
         currency: p.currency,
 
-        btcAmountSats: p.btc_amount_sats != null ? p.btc_amount_sats.toString() : null,
+        btcAmountSats:
+          p.btc_amount_sats != null ? p.btc_amount_sats.toString() : null,
         btcReceivedSats: (p.btc_received_sats ?? 0n).toString(),
-        btcRemainingSats: bigintMax(0n, (p.btc_amount_sats ?? 0n) - (p.btc_received_sats ?? 0n)).toString(),
-        btcOverpaidSats: bigintMax(0n, (p.btc_received_sats ?? 0n) - (p.btc_amount_sats ?? 0n)).toString(),
+        btcRemainingSats: bigintMax(
+          0n,
+          (p.btc_amount_sats ?? 0n) - (p.btc_received_sats ?? 0n)
+        ).toString(),
+        btcOverpaidSats: bigintMax(
+          0n,
+          (p.btc_received_sats ?? 0n) - (p.btc_amount_sats ?? 0n)
+        ).toString(),
         btcAddress: p.btc_address ?? null,
         btcNetwork: p.btc_network ?? null,
 
@@ -95,11 +111,9 @@ export async function GET(
         btcConfirmations: p.btc_confirmations,
         btcRequiredConfirmations: p.btc_required_confirmations,
 
-        // opcional tech
         btcTxid: p.btc_txid ?? null,
         btcDetectedAt: p.btc_detected_at?.toISOString() ?? null,
 
-        // para regenerar invoice luego
         paymentLinkToken: p.payment_links?.token ?? null,
       },
     },

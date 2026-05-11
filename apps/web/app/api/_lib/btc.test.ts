@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  allocateBtcAddress,
   calcSatsFromFiat,
   isAddressValidForNetwork,
   isSupportedCurrency,
@@ -10,9 +11,11 @@ import {
 import { btc_network } from "@prisma/client";
 
 const ORIGINAL_ENV = { ...process.env };
+const ORIGINAL_FETCH = globalThis.fetch;
 
 test.afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
+  globalThis.fetch = ORIGINAL_FETCH;
 });
 
 test("calcSatsFromFiat uses ceil rounding to avoid underpayment", () => {
@@ -53,4 +56,63 @@ test("address validation checks network prefixes", () => {
     isAddressValidForNetwork("tb1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", btc_network.SIGNET),
     true
   );
+});
+
+test("rpc address source fails with stable error when rpc env is missing", async () => {
+  process.env.BTC_ADDRESS_SOURCE = "rpc";
+  process.env.BTC_ALLOW_MOCKS = "false";
+  delete process.env.BTC_RPC_WALLET;
+
+  await assert.rejects(
+    () => allocateBtcAddress(btc_network.SIGNET),
+    (err: unknown) => err instanceof Error && err.message === "BTC_ADDRESS_SOURCE_UNAVAILABLE"
+  );
+});
+
+test("mock address source fails in production when mocks are disabled", async () => {
+  process.env = { ...process.env, NODE_ENV: "production" };
+  process.env.BTC_ADDRESS_SOURCE = "mock";
+  process.env.BTC_ALLOW_MOCKS = "false";
+
+  await assert.rejects(
+    () => allocateBtcAddress(btc_network.SIGNET),
+    (err: unknown) => err instanceof Error && err.message === "BTC_ADDRESS_SOURCE_UNAVAILABLE"
+  );
+});
+
+test("rpc happy path returns a valid signet address", async () => {
+  process.env.BTC_ADDRESS_SOURCE = "rpc";
+  process.env.BTC_ALLOW_MOCKS = "false";
+  process.env.BTC_RPC_URL = "http://127.0.0.1:38332";
+  process.env.BTC_RPC_USER = "***";
+  process.env.BTC_RPC_PASSWORD = "***";
+  process.env.BTC_RPC_WALLET = "floweypay";
+
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    assert.equal(String(input), "http://127.0.0.1:38332/wallet/floweypay");
+    assert.equal(init?.method, "POST");
+
+    const payload = JSON.parse(String(init?.body)) as {
+      method: string;
+      params: unknown[];
+    };
+
+    assert.equal(payload.method, "getnewaddress");
+    assert.deepEqual(payload.params, ["invoice", "bech32"]);
+
+    return new Response(
+      JSON.stringify({
+        result: "tb1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        error: null,
+        id: "floweypay",
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }) as typeof fetch;
+
+  const address = await allocateBtcAddress(btc_network.SIGNET);
+  assert.equal(isAddressValidForNetwork(address, btc_network.SIGNET), true);
 });

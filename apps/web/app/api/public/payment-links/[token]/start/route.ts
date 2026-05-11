@@ -6,6 +6,7 @@ import {
   calcSatsFromFiat,
   getBtcNetwork,
   getRateLockMinutes,
+  getRequiredConfirmations,
   isSupportedCurrency,
   normalizeCurrency,
   validateAmountCents,
@@ -191,7 +192,7 @@ export async function POST(
             btc_address: address,
             btc_amount_sats: sats,
             btc_confirmations: 0,
-            btc_required_confirmations: 1,
+            btc_required_confirmations: getRequiredConfirmations(),
             btc_expires_at: expiresAt,
 
             btc_fx_rate: fx.rate,

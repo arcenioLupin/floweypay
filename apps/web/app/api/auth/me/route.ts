@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/app/lib/prisma";
 import crypto from "crypto";
+import { SESSION_COOKIE_NAME } from "@/app/lib/auth/cookie";
 
 export const dynamic = "force-dynamic";
-
-const SESSION_COOKIE_NAME = "fp_session";
 
 const hashToken = (token: string) =>
   crypto.createHash("sha256").update(token).digest("hex");

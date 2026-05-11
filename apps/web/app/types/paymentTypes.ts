@@ -1,4 +1,5 @@
 export type PaymentStatus =
+  | "PENDING"
   | "AWAITING_PAYMENT"
   | "SEEN_IN_MEMPOOL"
   | "CONFIRMING"
@@ -19,6 +20,9 @@ export type PaymentLinkVM = {
 
   // BTC
   btcAmountSats: bigint;
+  btcReceivedSats: bigint;
+  btcRemainingSats: bigint;
+  btcOverpaidSats: bigint;
   btcAddress: string;
   btcNetwork: BtcNetwork;
 
@@ -49,6 +53,9 @@ export type InvoiceVm = {
   currency: string;
 
   btcAmountSats: string | null;
+  btcReceivedSats: string | null;
+  btcRemainingSats: string | null;
+  btcOverpaidSats: string | null;
   btcAddress: string | null;
   btcNetwork: string | null;
 
@@ -70,6 +77,30 @@ export type InvoiceVm = {
 export type ApiOk = { success: true; data: InvoiceVm };
 export type ApiErr = { success: false; message: string };
 export type ApiResp = ApiOk | ApiErr;
+
+// ─── Dashboard list row ────────────────────────────────────────────────────────
+// Lighter than InvoiceVm — nullable BTC fields are safe because a row may
+// be in PENDING status before a BTC invoice has been created.
+export type PaymentRowVm = {
+  id: string;
+  createdAt: string;
+  status: string;           // effectiveStatus, already expiry-resolved
+  productTitle: string | null;
+  fiatAmountCents: number;
+  currency: string;
+  btcAmountSats: string | null;
+  btcReceivedSats: string;
+  btcConfirmations: number;
+  btcRequiredConfirmations: number;
+  btcExpiresAt: string | null;
+  paymentLinkToken: string | null;
+};
+
+export type PaymentsListResponse = {
+  success: true;
+  items: PaymentRowVm[];
+  nextCursor: string | null;
+};
 
 
 
