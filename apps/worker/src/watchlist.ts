@@ -1,17 +1,9 @@
 import { prisma } from "./prisma";
-import { envNetwork } from "./env";
+import { prismaBtcNetwork } from "./env";
 
 let watched = new Set<string>();
 
 const normalize = (s: string) => s.trim().toLowerCase();
-
-function prismaBtcNetwork() {
-  const n = (envNetwork() ?? "").toLowerCase();
-  if (n === "regtest") return "REGTEST";
-  if (n === "signet") return "SIGNET";
-  if (n === "testnet") return "TESTNET";
-  return "MAINNET";
-}
 
 export function hasWatchedAddress(addr: string) {
   return watched.has(normalize(addr));
@@ -24,10 +16,15 @@ export async function refreshWatchlist() {
   const rows = await prisma.payments.findMany({
     where: {
       method: "BTC_ONCHAIN",
-      status: "AWAITING_PAYMENT",
       btc_network: net as any,
       btc_address: { not: null },
-      OR: [{ btc_expires_at: null }, { btc_expires_at: { gt: now } }],
+      OR: [
+        // Awaiting: respect expiration
+        { status: "AWAITING_PAYMENT" as any, btc_expires_at: null },
+        { status: "AWAITING_PAYMENT" as any, btc_expires_at: { gt: now } },
+        // Post-threshold: watch for overpayment traceability
+        { status: { in: ["SEEN_IN_MEMPOOL", "CONFIRMING"] as any } },
+      ],
     },
     select: { btc_address: true },
     take: 5000,

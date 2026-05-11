@@ -161,54 +161,231 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\f
 
 Alternative: PM2 is possible on Windows, but this runbook keeps dependencies minimal with native PowerShell.
 
-## 3) Backups (config/templates vs wallets)
+## 3) Backups
 
-Script: `scripts/ops/backup-node-assets.ps1`
+### Overview
 
-Modes:
-- `config`: backups of `bitcoin.conf` and repo templates (`.env.example`, `apps/web/.env.example`)
-- `wallet`: backups of `wallets/`
-- `all`: both
+| Script | Purpose | Run as |
+|---|---|---|
+| `scripts/ops/backup-node-assets.ps1` | Wallets (per-network) + node config | Weekly (via orchestrator) or manual |
+| `scripts/ops/backup-db.ps1` | PostgreSQL dump via `docker exec` | Weekly + optional daily |
+| `scripts/ops/restore-db.ps1` | Restore validation into temp DB | Automatic after each weekly backup |
+| `scripts/ops/backup-weekly.ps1` | Orchestrator: runs all three above | Scheduled weekly (Sunday 02:00) |
+| `scripts/ops/backup-daily.ps1` | DB-only daily backup (optional) | Scheduled Mon-Sat 02:00 (optional) |
 
-Destination format:
-- `B:\BTC_NODE\backups\YYYY-MM-DD-YYYYMMDD-HHMMSS`
+Restore and wallet recovery procedures: see `docs/ops/backup-restore-runbook.md`.
 
-Retention:
-- `-KeepBackups N` keeps newest `N` backup directories, prunes older ones.
+### Backup folder structure
 
-Examples:
+```
+B:\BTC_NODE\backups\
+  weekly\
+    <YYYYMMDD-HHMMSS>\        <- one directory per weekly run
+      config\
+        bitcoin.conf
+        .env.example
+        web.env.example
+      wallets\
+        signet\               <- per-network, only networks that exist are included
+          floweypay-signet\
+        mainnet\              <- present only when mainnet wallets directory exists
+      db\
+        floweypay-<timestamp>.dump
+      backup-meta.txt
+  daily\
+    <YYYYMMDD-HHMMSS>\        <- DB only
+      db\
+        floweypay-<timestamp>.dump
+```
+
+Retention: weekly keeps 8 directories (~2 months). Daily keeps 7 directories (~1 week).
+
+### backup-node-assets.ps1
+
+Backs up `bitcoin.conf`, repo `.env.example` templates (never live secret files), and wallet
+directories by network. Each active network gets its own subdirectory under `wallets\<network>\`.
+
+New parameters (Day 34):
+
+- `-Network` — `all` | `signet` | `mainnet` | `regtest` | `testnet3` (default `all`)
+- `-OutDir` — when set by an orchestrator, use this path directly (skips retention pruning)
 
 ```powershell
-# Config/templates only
-powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\backup-node-assets.ps1" -Datadir "B:\BTC_NODE\bitcoin-data" -RepoRoot "D:\software-sas\workspace\floweypay" -BackupRoot "B:\BTC_NODE\backups" -Mode config -KeepBackups 14
+# Standalone: full backup, all networks
+powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\backup-node-assets.ps1" `
+  -Datadir "B:\BTC_NODE\bitcoin-data" -RepoRoot "D:\software-sas\workspace\floweypay" `
+  -BackupRoot "B:\BTC_NODE\backups" -Mode all -KeepBackups 14
 
-# Wallets only
-powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\backup-node-assets.ps1" -Datadir "B:\BTC_NODE\bitcoin-data" -BackupRoot "B:\BTC_NODE\backups" -Mode wallet -KeepBackups 14
-
-# Full backup
-powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\backup-node-assets.ps1" -Datadir "B:\BTC_NODE\bitcoin-data" -RepoRoot "D:\software-sas\workspace\floweypay" -BackupRoot "B:\BTC_NODE\backups" -Mode all -KeepBackups 14
+# Signet wallets only
+powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\backup-node-assets.ps1" `
+  -Datadir "B:\BTC_NODE\bitcoin-data" -BackupRoot "B:\BTC_NODE\backups" `
+  -Mode wallet -Network signet -KeepBackups 14
 ```
+
+### backup-db.ps1
+
+Runs `pg_dump -Fc` inside the `floweypay_db` Docker container (Unix socket — no password
+needed), copies the dump to the host, validates non-zero size.
+
+```powershell
+# Standalone DB backup
+powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\backup-db.ps1" `
+  -BackupDir "B:\BTC_NODE\backups\db" -KeepBackups 8
+```
+
+### restore-db.ps1
+
+Restores a `.dump` file into `floweypay_restore_test` (never touches the live DB), runs
+`SELECT COUNT(*) FROM payments` as a smoke test, then drops the test database.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\restore-db.ps1" `
+  -DumpFile "B:\BTC_NODE\backups\weekly\<timestamp>\db\floweypay-<timestamp>.dump"
+```
+
+### backup-weekly.ps1 (recommended schedule)
+
+Orchestrates all three steps in order: node assets -> DB dump -> restore validation.
+Writes a log to `B:\BTC_NODE\logs\backup\weekly-<date>.log`. Exits non-zero if any step fails.
+
+```powershell
+# Manual run
+powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\backup-weekly.ps1"
+
+# Dry run
+powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\backup-weekly.ps1" -WhatIf
+```
+
+Task Scheduler setup (weekly, Sunday 02:00):
+
+1. Open Task Scheduler -> Create Task (not Basic Task).
+2. General tab:
+   - Name: `FloweyPay Weekly Backup`
+   - `Run whether user is logged on or not`
+   - `Run with highest privileges`
+3. Triggers tab:
+   - New -> Weekly -> Sunday -> 02:00
+   - Check `Stop task if it runs longer than: 2 hours`
+4. Actions tab:
+   - Program/script: `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`
+   - Add arguments:
+     `-NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\backup-weekly.ps1"`
+   - Start in: `D:\software-sas\workspace\floweypay`
+5. Settings tab:
+   - `Run task as soon as possible after a scheduled start is missed`
+
+### backup-daily.ps1 (optional)
+
+DB-only backup. Keeps 7 daily directories. Does not include wallet files or node config.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\backup-daily.ps1"
+```
+
+Schedule with Task Scheduler (daily Mon-Sat 02:00) using the same pattern as weekly above,
+but trigger: Daily at 02:00, then in Advanced Settings set repeat or use multiple triggers
+excluding Sunday (which runs the full weekly instead).
 
 ### Wallet backup timing and safety
 
-Wallet data is sensitive and consistency matters.
+Wallet files (`B:\BTC_NODE\bitcoin-data\signet\wallets\floweypay-signet\`) are copied at the
+filesystem level. For maximum safety stop the node before the copy:
 
-Preferred options:
-1. Stop node before filesystem wallet copy:
-   - `bitcoin-cli -signet -datadir="B:\BTC_NODE\bitcoin-data" stop`
-   - Run wallet backup mode
-   - Start node again
-2. Use wallet RPC backup flow while node is running:
-   - Load wallet(s) first if needed
-   - Run `backupwallet` per wallet to a secure backup location
+```powershell
+bitcoin-cli -signet -datadir="B:\BTC_NODE\bitcoin-data" stop
+# run backup
+schtasks /Run /TN "FloweyPay Bitcoin Core (signet)"
+```
 
-Security warnings:
+For signet/dev use the live filesystem copy is acceptable. For mainnet, stop the node first
+or use the `backupwallet` RPC:
+
+```powershell
+bitcoin-cli -signet -datadir="B:\BTC_NODE\bitcoin-data" backupwallet "B:\BTC_NODE\backups\manual\floweypay-signet.bak"
+```
+
+### Security and offsite reminder
+
 - Never commit wallet files, secrets, or private keys to git.
-- Keep wallet backups encrypted and access-controlled.
-- Store at least one offline/offsite copy.
-- Test restore procedures periodically in a safe environment.
+- Keep wallet backups access-controlled (not world-readable).
+- `.env.local` and live secret files are **not** included in any backup script by design.
+- `B:\BTC_NODE\backups\` is on the same host as the live data. A single disk failure loses
+  both. Schedule a periodic robocopy or rclone job to copy the `backups\` tree to an
+  external drive or remote storage.
 
-## 4) Troubleshooting checklist (RPC / ZMQ)
+## 4) Observability and health checks
+
+### Worker heartbeat file
+
+The worker writes a JSON status file every 30 seconds:
+
+```
+B:\BTC_NODE\run\worker-status.json
+```
+
+Fields:
+- `ts` — ISO timestamp of the last write
+- `pid` — worker process ID
+- `watchlistSize` — number of addresses currently watched
+- `lastRawTxAt` — timestamp of the last received `rawtx` ZMQ message (null if none since boot)
+- `lastRawBlockAt` — timestamp of the last received `rawblock` ZMQ message (null if none since boot)
+- `lastBlockHeight` — most recently processed block height (null if no block processed yet)
+
+Configure the path via `WORKER_STATUS_FILE` in both the worker and web environments.
+Default: `B:\BTC_NODE\run\worker-status.json`
+
+### Health endpoints (internal)
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/node/health` | bitcoind RPC health: chain, block lag, sync status, DB reachability |
+| `GET /api/worker/status` | Worker liveness: reads heartbeat file, reports staleness, watchlist size |
+
+Both endpoints are internal. Do not expose them publicly without an access guard.
+
+`/api/node/health` response fields:
+- `ok` — overall health boolean
+- `blockLag` — `headers - blocks` (> 2 indicates the node is catching up)
+- `synced` — `true` when not in IBD and `blockLag <= 2`
+- `dbOk` — PostgreSQL reachability
+
+### check-health.ps1
+
+Script: `scripts/ops/check-health.ps1`
+
+Runs four checks in sequence: worker PID, heartbeat freshness, `/api/node/health`, `/api/worker/status`.
+Exits with code 0 on success, 1 on any failure. Appends a one-line result to a daily log file.
+
+```powershell
+# Manual run
+powershell -NoProfile -ExecutionPolicy Bypass -File "D:\software-sas\workspace\floweypay\scripts\ops\check-health.ps1" `
+  -WebBaseUrl "http://localhost:3000" `
+  -LogDir "B:\BTC_NODE\logs\health"
+
+# Scheduled via Task Scheduler (every 5 minutes is sufficient for MVP)
+# Action → Start a program:
+#   powershell.exe
+#   -NoProfile -ExecutionPolicy Bypass -File "...\check-health.ps1" -WebBaseUrl "http://localhost:3000"
+```
+
+Parameters:
+- `-PidFile` — path to worker PID file (default: `B:\BTC_NODE\run\worker.pid`)
+- `-StatusFile` — path to worker heartbeat JSON (default: `B:\BTC_NODE\run\worker-status.json`)
+- `-StaleThreshold` — seconds before heartbeat is considered stale (default: 120)
+- `-WebBaseUrl` — base URL for the web app (default: `http://localhost:3000`)
+- `-LogDir` — where to write daily health logs (default: `B:\BTC_NODE\logs\health`)
+
+### FX provider failures
+
+Provider errors and cache-fallback events are logged to stderr with `[fxrate]` prefix:
+- `[fxrate] provider unavailable, serving stale cache:` — provider rejected, cache used
+- `[fxrate] provider unavailable, no cache fallback:` — provider rejected, no cache → invoice creation fails
+- `[fxrate] provider error, serving stale cache:` — unexpected error, cache used
+- `[fxrate] provider error, no cache fallback:` — unexpected error, no cache → invoice creation fails
+
+These appear in the web process logs (Next.js server stdout/stderr).
+
+## 5) Troubleshooting checklist (RPC / ZMQ)
 
 Use this symptom -> likely cause -> fix checklist.
 

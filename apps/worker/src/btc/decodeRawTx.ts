@@ -21,11 +21,11 @@ export function decodeRawTx(payload: Buffer): DecodedRawTx {
   const net = btcjsNetwork();
   const outputs: TxOutput[] = [];
 
-  for (const out of tx.outs) {
+  for (let i = 0; i < tx.outs.length; i++) {
     try {
+      const out = tx.outs[i];
       const address = bitcoin.address.fromOutputScript(out.script, net);
-      // out.value es number (sats) en bitcoinjs-lib
-      outputs.push({ address, valueSats: BigInt(out.value) });
+      outputs.push({ address, valueSats: BigInt(out.value), voutIndex: i });
     } catch {
       // output no estándar -> ignorar
     }

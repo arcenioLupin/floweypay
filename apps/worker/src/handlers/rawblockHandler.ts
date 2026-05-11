@@ -1,14 +1,7 @@
 import { prisma } from "../prisma";
-import { envNetwork } from "../env";
+import { prismaBtcNetwork } from "../env";
 import { rpcCall } from "../btc/rpc";
-
-function prismaBtcNetwork() {
-  const n = (envNetwork() ?? "").toLowerCase();
-  if (n === "regtest") return "REGTEST";
-  if (n === "signet") return "SIGNET";
-  if (n === "testnet") return "TESTNET";
-  return "MAINNET";
-}
+import { completingSubsetMinConf } from "../btc/completingSubset";
 
 type GetBlockVerbosity1 = {
   hash: string;
@@ -18,9 +11,13 @@ type GetBlockVerbosity1 = {
 
 let isHandling = false;
 let lastBestHash: string | null = null;
+let lastBlockHeight: number | null = null;
+
+export function getLastBlockHeight(): number | null {
+  return lastBlockHeight;
+}
 
 export async function handleRawBlockMessage(_payload: Buffer) {
-  // Evitar doble procesamiento si llegan eventos muy seguidos
   if (isHandling) return;
   isHandling = true;
 
@@ -30,24 +27,34 @@ export async function handleRawBlockMessage(_payload: Buffer) {
     lastBestHash = bestHash;
 
     const block = await rpcCall<GetBlockVerbosity1>("getblock", [bestHash, 1]);
+    lastBlockHeight = block.height;
     const txSet = new Set(block.tx);
 
     const net = prismaBtcNetwork();
 
-    // Traemos los payments BTC que ya tienen txid y están en proceso
+    // Include AWAITING_PAYMENT so partial-tx confirmations are tracked (Fix 1).
+    // Only fetch payments that actually have child txs.
     const rows = await prisma.payments.findMany({
       where: {
         method: "BTC_ONCHAIN",
         btc_network: net as any,
-        btc_txid: { not: null },
-        status: { in: ["SEEN_IN_MEMPOOL", "CONFIRMING"] as any },
+        status: { in: ["AWAITING_PAYMENT", "SEEN_IN_MEMPOOL", "CONFIRMING"] as any },
+        payment_btc_txs: { some: {} },
       },
       select: {
         id: true,
         status: true,
-        btc_txid: true,
-        btc_confirmations: true,
+        btc_amount_sats: true,
         btc_required_confirmations: true,
+        payment_btc_txs: {
+          select: {
+            id: true,
+            txid: true,
+            amount_sats: true,
+            confirmations: true,
+            detected_at: true,
+          },
+        },
       },
       take: 5000,
     });
@@ -55,42 +62,58 @@ export async function handleRawBlockMessage(_payload: Buffer) {
     let updated = 0;
 
     for (const p of rows) {
-      const txid = p.btc_txid!;
-      const required = p.btc_required_confirmations ?? 1;
+      const childTxs = p.payment_btc_txs;
+      if (childTxs.length === 0) continue;
 
-      // Caso 1: estaba en mempool y ahora aparece en el bloque => 1 confirmación
-      if (p.status === "SEEN_IN_MEMPOOL") {
-        if (!txSet.has(txid)) continue;
+      // Step 1: Update child tx confirmations regardless of payment status
+      let anyChildUpdated = false;
 
-        const conf = 1;
-        const newStatus = conf >= required ? "CONFIRMED" : "CONFIRMING";
+      for (const child of childTxs) {
+        let newConf = child.confirmations;
 
-        await prisma.payments.update({
-          where: { id: p.id },
-          data: {
-            btc_confirmations: conf,
-            status: newStatus as any,
-          },
-        });
+        if (child.confirmations === 0) {
+          if (txSet.has(child.txid)) {
+            newConf = 1;
+          }
+        } else {
+          newConf = child.confirmations + 1;
+        }
 
-        updated++;
-        continue;
+        if (newConf !== child.confirmations) {
+          await prisma.payment_btc_txs.update({
+            where: { id: child.id },
+            data: { confirmations: newConf },
+          });
+          child.confirmations = newConf; // update in-memory for subset calc
+          anyChildUpdated = true;
+        }
       }
 
-      // Caso 2: ya estaba CONFIRMING => cada bloque suma 1 confirmación (en REGTEST sin reorgs está ok)
-      if (p.status === "CONFIRMING") {
-        const conf = (p.btc_confirmations ?? 0) + 1;
-        const newStatus = conf >= required ? "CONFIRMED" : "CONFIRMING";
+      if (!anyChildUpdated) continue;
+      updated++;
 
+      // Step 2: Payment-level status only for post-threshold payments.
+      // AWAITING_PAYMENT = threshold not reached; child confs tracked above, nothing else to do.
+      if (p.status === "AWAITING_PAYMENT") continue;
+
+      // Step 3: Compute payment-level confirmations from the completing subset only (Fix 3).
+      // Extra overpayment txs are excluded so they don't drag down the count.
+      const expectedSats = p.btc_amount_sats ?? 0n;
+      const required = p.btc_required_confirmations ?? 1;
+
+      const minConf = completingSubsetMinConf(childTxs, expectedSats);
+      if (minConf == null) continue;
+
+      const newStatus = minConf >= required ? "CONFIRMED" : minConf >= 1 ? "CONFIRMING" : p.status;
+
+      if (newStatus !== p.status || minConf > 0) {
         await prisma.payments.update({
           where: { id: p.id },
           data: {
-            btc_confirmations: conf,
+            btc_confirmations: minConf,
             status: newStatus as any,
           },
         });
-
-        updated++;
       }
     }
 

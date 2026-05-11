@@ -1,9 +1,35 @@
 import "dotenv/config";
+import * as fs from "fs";
+import * as path from "path";
 import * as zmq from "zeromq";
-import { envZmqRawTx, envZmqRawBlock } from "./env";
+import { envZmqRawTx, envZmqRawBlock, validateWorkerEnv, envWorkerStatusFile } from "./env";
 import { refreshWatchlist } from "./watchlist";
+import { expireStalePayments } from "./jobs/expirePayments";
 import { handleRawTxMessage } from "./handlers/rawtxHandler";
-import { handleRawBlockMessage } from "./handlers/rawblockHandler";
+import { handleRawBlockMessage, getLastBlockHeight } from "./handlers/rawblockHandler";
+
+let lastRawTxAt: Date | null = null;
+let lastRawBlockAt: Date | null = null;
+let currentWatchlistSize = 0;
+
+function writeHeartbeat(): void {
+  try {
+    const filePath = envWorkerStatusFile();
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const payload = {
+      ts: new Date().toISOString(),
+      pid: process.pid,
+      watchlistSize: currentWatchlistSize,
+      lastRawTxAt: lastRawTxAt?.toISOString() ?? null,
+      lastRawBlockAt: lastRawBlockAt?.toISOString() ?? null,
+      lastBlockHeight: getLastBlockHeight(),
+    };
+    fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), "utf8");
+  } catch (e) {
+    console.warn("[heartbeat] failed to write status file:", e);
+  }
+}
 
 async function startRawTxSub(url: string) {
   const sub = new zmq.Subscriber();
@@ -16,6 +42,7 @@ async function startRawTxSub(url: string) {
     const payload = frames[1];
     if (topic !== "rawtx" || !payload) continue;
 
+    lastRawTxAt = new Date();
     try {
       await handleRawTxMessage(payload);
     } catch (e) {
@@ -35,6 +62,7 @@ async function startRawBlockSub(url: string) {
     const payload = frames[1];
     if (topic !== "rawblock" || !payload) continue;
 
+    lastRawBlockAt = new Date();
     try {
       await handleRawBlockMessage(payload);
     } catch (e) {
@@ -44,20 +72,33 @@ async function startRawBlockSub(url: string) {
 }
 
 async function main() {
+  validateWorkerEnv();
+
   const urlTx = envZmqRawTx();
   const urlBlock = envZmqRawBlock();
 
-  // watchlist inicial + refresh cada 30s (solo para AWAITING_PAYMENT)
+  // boot: expire stale payments first, then load watchlist
+  const expired0 = await expireStalePayments();
+  if (expired0 > 0) console.log(`[boot] expired ${expired0} stale payments`);
+
   const n0 = await refreshWatchlist();
+  currentWatchlistSize = n0;
   console.log(`[boot] watchlist loaded: ${n0} addresses`);
 
   const timer = setInterval(async () => {
     try {
+      await expireStalePayments();
+    } catch (e) {
+      console.warn("[expire] job failed:", e);
+    }
+    try {
       const n = await refreshWatchlist();
+      currentWatchlistSize = n;
       console.log(`[watchlist] refreshed: ${n} addresses`);
     } catch (e) {
       console.warn("[watchlist] refresh failed:", e);
     }
+    writeHeartbeat();
   }, 30_000);
 
   process.on("SIGINT", async () => {

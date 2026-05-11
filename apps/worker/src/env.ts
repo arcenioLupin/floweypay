@@ -7,9 +7,36 @@ export function env(name: string, fallback?: string) {
 }
 
 export function envNetwork(): BtcNetwork {
-  const v = (process.env.BTC_NETWORK ?? "main").toLowerCase();
-  if (v === "main" || v === "signet" || v === "testnet" || v === "regtest") return v;
-  return "main";
+  const raw = process.env.BTC_NETWORK;
+  if (!raw) throw new Error("MISSING_ENV_BTC_NETWORK");
+
+  const v = raw.trim().toLowerCase();
+
+  if (v === "main" || v === "mainnet") {
+    if (process.env.FLOWEYPAY_MAINNET_CONFIRMED !== "true") {
+      throw new Error(
+        "MAINNET_NOT_CONFIRMED: set FLOWEYPAY_MAINNET_CONFIRMED=true to run against mainnet"
+      );
+    }
+    return "main";
+  }
+
+  if (v === "signet") return "signet";
+  if (v === "testnet") return "testnet";
+  if (v === "regtest") return "regtest";
+
+  throw new Error(
+    `INVALID_BTC_NETWORK: "${raw}" — expected SIGNET, MAINNET, TESTNET, or REGTEST`
+  );
+}
+
+/** Maps the worker's BtcNetwork to the Prisma btc_network enum string. */
+export function prismaBtcNetwork(): string {
+  const n = envNetwork();
+  if (n === "regtest") return "REGTEST";
+  if (n === "signet") return "SIGNET";
+  if (n === "testnet") return "TESTNET";
+  return "MAINNET";
 }
 
 export function envZmqRawTx(): string {
@@ -43,4 +70,27 @@ export function envRpcUrl(): string {
     regtest: "http://127.0.0.1:18443",
   };
   return process.env.BTC_RPC_URL ?? defaults[net];
+}
+
+/**
+ * Validates all required worker environment variables.
+ * Call once at startup in main() before connecting to ZMQ or the database.
+ */
+export function validateWorkerEnv(): void {
+  env("DATABASE_URL");
+  env("BTC_RPC_USER");
+  env("BTC_RPC_PASSWORD");
+
+  const network = envNetwork(); // throws on missing, invalid, or unconfirmed mainnet
+  const rpcUrl = envRpcUrl();
+  const zmqTx = envZmqRawTx();
+  const zmqBlock = envZmqRawBlock();
+
+  console.log(
+    `[config] network=${network} rpcUrl=${rpcUrl} zmqTx=${zmqTx} zmqBlock=${zmqBlock}`
+  );
+}
+
+export function envWorkerStatusFile(): string {
+  return process.env.WORKER_STATUS_FILE ?? "B:\\BTC_NODE\\run\\worker-status.json";
 }
