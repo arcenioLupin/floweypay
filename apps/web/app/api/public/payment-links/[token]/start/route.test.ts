@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { prisma } from "@/app/lib/prisma";
 import { clearRateCacheForTests, getRateWithFallback } from "@/app/api/_lib/btcRateService";
+import { clearRateLimitStoreForTests } from "@/lib/security/rateLimit";
 import { POST } from "./route";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -15,6 +16,7 @@ function restoreMethod(target: Record<string, unknown>, key: string, original: u
 test.afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
   clearRateCacheForTests();
+  clearRateLimitStoreForTests();
 });
 
 test("returns 400 for unsupported currency", async () => {

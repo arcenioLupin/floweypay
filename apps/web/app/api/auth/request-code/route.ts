@@ -3,6 +3,11 @@ import { prisma } from "../../../lib/prisma";
 import { generateOtpCode, hashOtp } from "../../../lib/auth/otp";
 import { sendEmail } from "@/app/lib/mail/zoho";
 import { otpEmailTemplate } from "@/app/lib/mail/templates/otp";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/security/rateLimit";
 
 const OTP_TTL_MINUTES = 10;
 const OTP_COOLDOWN_SECONDS = 60;
@@ -17,7 +22,15 @@ function getEmailMode(): EmailMode {
     }
     return "console";
   }
-  if (raw === "console" || raw === "live") return raw;
+  if (raw === "console") {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "AUTH_EMAIL_MODE=console is not allowed in production. Set AUTH_EMAIL_MODE=live."
+      );
+    }
+    return "console";
+  }
+  if (raw === "live") return raw;
   throw new Error(`INVALID_AUTH_EMAIL_MODE: "${raw}" — expected "console" or "live"`);
 }
 
@@ -29,6 +42,23 @@ export async function POST(req: Request) {
     if (!email || !email.includes("@")) {
       return NextResponse.json({ message: "Invalid email" }, { status: 400 });
     }
+
+    // Rate limiting: IP first, then email — both must pass before any DB work.
+    const ip = getClientIp(req);
+
+    const ipRl = checkRateLimit({
+      key: `request-code:ip:${ip}`,
+      limit: 5,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!ipRl.allowed) return rateLimitResponse(ipRl);
+
+    const emailRl = checkRateLimit({
+      key: `request-code:email:${email}`,
+      limit: 3,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!emailRl.allowed) return rateLimitResponse(emailRl);
 
     // 1) Cooldown / idempotencia simple: si ya hay un OTP activo reciente, no generamos otro
     const now = new Date();
@@ -45,6 +75,17 @@ export async function POST(req: Request) {
     if (recent) {
       return NextResponse.json({ ok: true });
     }
+
+    // Invalidate any previous active OTPs for this email before issuing a new one.
+    // Prevents an old partially-attempted code from remaining usable alongside the new one.
+    await prisma.login_codes.updateMany({
+      where: {
+        email,
+        consumed_at: null,
+        expires_at: { gt: now },
+      },
+      data: { consumed_at: now },
+    });
 
     const code = generateOtpCode();
     const codeHash = hashOtp(email, code);

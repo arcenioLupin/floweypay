@@ -2,6 +2,8 @@ import { prisma } from "../prisma";
 import { prismaBtcNetwork } from "../env";
 import { rpcCall } from "../btc/rpc";
 import { completingSubsetMinConf } from "../btc/completingSubset";
+import { scheduleNotification } from "../notifications/notify";
+import { payment_notification_event } from "@prisma/client";
 
 type GetBlockVerbosity1 = {
   hash: string;
@@ -114,6 +116,13 @@ export async function handleRawBlockMessage(_payload: Buffer) {
             status: newStatus as any,
           },
         });
+
+        if (newStatus !== p.status && newStatus === "CONFIRMED") {
+          void scheduleNotification(
+            p.id,
+            payment_notification_event.CONFIRMED
+          );
+        }
       }
     }
 

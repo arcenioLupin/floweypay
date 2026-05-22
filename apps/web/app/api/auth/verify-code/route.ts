@@ -3,13 +3,19 @@ import { cookies } from "next/headers";
 import { prisma } from "../../../lib/prisma";
 import { hashOtp } from "../../../lib/auth/otp";
 import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/security/rateLimit";
+import {
   generateSessionToken,
   hashSessionToken,
   sessionExpiresAt,
 } from "../../../lib/auth/session";
 import { SESSION_COOKIE_NAME } from "@/app/lib/auth/cookie";
 
-const OTP_MAX_AGE_MINUTES = 10;
+const MAX_OTP_ATTEMPTS = 5;
+const INVALID_CODE_MSG = "Invalid or expired code";
 
 export async function POST(req: Request) {
   try {
@@ -21,44 +27,74 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Invalid payload" }, { status: 400 });
     }
 
-    // 1) Buscar el último OTP no consumido (por email)
+    // Rate limiting: IP first, then email — both must pass before any DB work.
+    const ip = getClientIp(req);
+
+    const ipRl = checkRateLimit({
+      key: `verify-code:ip:${ip}`,
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!ipRl.allowed) return rateLimitResponse(ipRl);
+
+    const emailRl = checkRateLimit({
+      key: `verify-code:email:${email}`,
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!emailRl.allowed) return rateLimitResponse(emailRl);
+
+    const now = new Date();
+
+    // 1) Find the latest active (not consumed, not expired) OTP for this email
     const latest = await prisma.login_codes.findFirst({
       where: {
         email,
         consumed_at: null,
+        expires_at: { gt: now },
       },
       orderBy: { created_at: "desc" },
     });
 
     if (!latest) {
-      return NextResponse.json({ message: "Code not found" }, { status: 400 });
+      return NextResponse.json({ message: INVALID_CODE_MSG }, { status: 400 });
     }
 
-    // 2) Validar expiración
-    const now = new Date();
-    if (latest.expires_at <= now) {
-      return NextResponse.json({ message: "Code expired" }, { status: 400 });
+    // 2) Check attempt limit before evaluating the code
+    if (latest.attempts >= MAX_OTP_ATTEMPTS) {
+      return NextResponse.json({ message: INVALID_CODE_MSG }, { status: 400 });
     }
 
-    // 3) Validar hash OTP
+    // 3) Validate code hash — increment attempts atomically on mismatch
     const expectedHash = hashOtp(email, code);
     if (expectedHash !== latest.code_hash) {
-      return NextResponse.json({ message: "Invalid code" }, { status: 400 });
+      await prisma.login_codes.update({
+        where: { id: latest.id },
+        data: { attempts: { increment: 1 } },
+      });
+      return NextResponse.json({ message: INVALID_CODE_MSG }, { status: 400 });
     }
 
-    // 4) Consumir OTP (idempotencia simple)
-    await prisma.login_codes.update({
-      where: { id: latest.id },
+    // 4) Consume OTP — optimistic lock: only succeeds if the row is still unconsumed.
+    //    Guards against double-session creation on concurrent correct-code requests.
+    const { count } = await prisma.login_codes.updateMany({
+      where: { id: latest.id, consumed_at: null },
       data: { consumed_at: now },
     });
 
-    // (Opcional) Limpiar OTPs expirados del mismo email
-    await prisma.login_codes.deleteMany({
-    where: {
-        email,
-        expires_at: { lt: new Date() },
-    },
-    });
+    if (count === 0) {
+      // Another concurrent request already consumed this code
+      return NextResponse.json({ message: INVALID_CODE_MSG }, { status: 400 });
+    }
+
+    // Clean up expired OTPs for this email (best-effort; failure must not break login)
+    try {
+      await prisma.login_codes.deleteMany({
+        where: { email, expires_at: { lt: now } },
+      });
+    } catch {
+      // Non-critical — ignore
+    }
 
     // 5) Upsert user
     const user = await prisma.users.upsert({

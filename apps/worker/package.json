@@ -9,10 +9,12 @@
   "dependencies": {
     "@floweypay/db": "*",
     "bitcoinjs-lib": "^7.0.1",
+    "nodemailer": "^8.0.0",
     "zeromq": "^6.5.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.39",
+    "@types/nodemailer": "^7.0.9",
     "tsx": "^4.21.0",
     "typescript": "^5"
   }

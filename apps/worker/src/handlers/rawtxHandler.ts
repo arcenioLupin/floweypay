@@ -3,7 +3,8 @@ import { decodeRawTx } from "../btc/decodeRawTx";
 import { accumulatePaymentTx } from "../btc/paymentAccumulator";
 import { hasWatchedAddress } from "../watchlist";
 import { prismaBtcNetwork } from "../env";
-
+import { scheduleNotification } from "../notifications/notify";
+import { payment_notification_event } from "@prisma/client";
 
 export async function handleRawTxMessage(payload: Buffer) {
   const { txid, outputs } = decodeRawTx(payload);
@@ -100,5 +101,13 @@ export async function handleRawTxMessage(payload: Buffer) {
     console.log(
       `[rawtx] ${tag} payment=${p.id} addr=${addr} received=${result.receivedSats.toString()}/${result.expectedSats.toString()} txid=${txid.slice(0, 10)}…`
     );
+
+    // Schedule mempool notification after threshold is crossed for the first time
+    if (p.status === "AWAITING_PAYMENT" && result.thresholdReached) {
+      void scheduleNotification(
+        p.id,
+        payment_notification_event.SEEN_IN_MEMPOOL
+      );
+    }
   }
 }

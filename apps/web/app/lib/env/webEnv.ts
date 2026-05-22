@@ -34,6 +34,13 @@ export function validateWebEnv(): void {
     );
   }
 
+  // console mode prints OTPs to stdout — never acceptable in production.
+  if (emailMode === "console") {
+    throw new Error(
+      "AUTH_EMAIL_MODE=console is not allowed in production. Set AUTH_EMAIL_MODE=live."
+    );
+  }
+
   if (emailMode === "live") {
     if (!process.env.ZOHO_SMTP_USER) throw new Error("MISSING_ENV_ZOHO_SMTP_USER");
     if (!process.env.ZOHO_SMTP_PASS) throw new Error("MISSING_ENV_ZOHO_SMTP_PASS");

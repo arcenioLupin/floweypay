@@ -86,6 +86,23 @@ export function validateWorkerEnv(): void {
   const zmqTx = envZmqRawTx();
   const zmqBlock = envZmqRawBlock();
 
+  // Validate email config (same rules as web app)
+  const emailMode = process.env.AUTH_EMAIL_MODE;
+  if (!emailMode) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("MISSING_ENV_AUTH_EMAIL_MODE");
+    }
+    // dev default: console mode — no further checks needed
+  } else {
+    if (emailMode !== "console" && emailMode !== "live") {
+      throw new Error(`INVALID_AUTH_EMAIL_MODE: "${emailMode}" — expected "console" or "live"`);
+    }
+    if (emailMode === "live") {
+      env("ZOHO_SMTP_USER");
+      env("ZOHO_SMTP_PASS");
+    }
+  }
+
   console.log(
     `[config] network=${network} rpcUrl=${rpcUrl} zmqTx=${zmqTx} zmqBlock=${zmqBlock}`
   );

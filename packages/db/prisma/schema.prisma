@@ -57,6 +57,7 @@ model payments {
   payment_links                             payment_links?  @relation(fields: [payment_link_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   payment_btc_txs                           payment_btc_txs[]
+  payment_notifications                     payment_notifications[]
 
   @@index([payment_link_id], map: "idx_payments_payment_link_id")
   @@index([creator_id, created_at(sort: Desc)], map: "idx_payments_creator_created_at")
@@ -123,6 +124,7 @@ model login_codes {
   code_hash   String
   expires_at  DateTime  @db.Timestamptz(6)
   consumed_at DateTime? @db.Timestamptz(6)
+  attempts    Int       @default(0)
   created_at  DateTime  @default(now()) @db.Timestamptz(6)
 
   @@index([email, created_at(sort: Desc)], map: "idx_login_codes_email_created_at")
@@ -179,6 +181,25 @@ model payment_btc_txs {
   @@index([payment_id], map: "idx_payment_btc_txs_payment_id")
 }
 
+/// One notification record per (payment, event). Idempotency via unique constraint.
+model payment_notifications {
+  id          String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payment_id  String                       @db.Uuid
+  event       payment_notification_event
+  recipient   String
+  status      payment_notification_status  @default(PENDING)
+  attempts    Int                          @default(0)
+  last_error  String?
+  sent_at     DateTime?                    @db.Timestamptz(6)
+  created_at  DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime                     @updatedAt @db.Timestamptz(6)
+
+  payments payments @relation(fields: [payment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([payment_id, event], map: "uq_payment_notifications_pid_event")
+  @@index([status, created_at], map: "idx_payment_notifications_status_created")
+}
+
 
 enum payment_method {
   CARD
@@ -202,4 +223,16 @@ enum btc_network {
   TESTNET
   SIGNET
   REGTEST
+}
+
+enum payment_notification_event {
+  SEEN_IN_MEMPOOL
+  CONFIRMED
+  EXPIRED
+}
+
+enum payment_notification_status {
+  PENDING
+  SENT
+  FAILED
 }

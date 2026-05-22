@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/security/rateLimit";
 import { Prisma, payment_status } from "@prisma/client";
 import {
   allocateBtcAddress,
@@ -54,10 +59,27 @@ async function findActivePayment(paymentLinkId: string, now: Date) {
 
 
 export async function POST(
-  _req: Request,
-  { params }: { params: Promise<{ token: string }>}
+  req: Request,
+  { params }: { params: Promise<{ token: string }> }
 ) {
-  const { token } =  await params;
+  // Rate limiting: IP check before params await, token check after.
+  const ip = getClientIp(req);
+
+  const ipRl = checkRateLimit({
+    key: `payment-start:ip:${ip}`,
+    limit: 20,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (!ipRl.allowed) return rateLimitResponse(ipRl);
+
+  const { token } = await params;
+
+  const tokenRl = checkRateLimit({
+    key: `payment-start:token:${token}`,
+    limit: 10,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (!tokenRl.allowed) return rateLimitResponse(tokenRl);
 
   console.log("[start] token:", token);
 
