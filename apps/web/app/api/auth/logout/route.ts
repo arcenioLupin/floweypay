@@ -10,6 +10,7 @@ export async function POST() {
 
   // respuesta OK siempre (logout idempotente)
   const res = NextResponse.json({ ok: true });
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
 
   // borrar cookie
   res.cookies.set({

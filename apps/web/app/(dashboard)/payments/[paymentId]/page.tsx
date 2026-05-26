@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { formatFiat, formatSats } from "@/app/helpers/btcPaymentLinkHelpers";
+import { StatusBadge } from "../PaymentFilters";
 
 export const metadata: Metadata = { title: "Payment Detail" };
 
@@ -86,7 +87,15 @@ export default async function PaymentDetailPage({ params }: Props) {
     : null;
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "32px 24px", fontFamily: "sans-serif" }}>
+    <div
+      style={{
+        maxWidth: 640,
+        margin: "0 auto",
+        padding: "28px 24px",
+        fontFamily: "sans-serif",
+      }}
+    >
+      {/* Back link */}
       <Link
         href="/payments"
         style={{ fontSize: 13, color: "#2563eb", textDecoration: "none" }}
@@ -151,10 +160,8 @@ export default async function PaymentDetailPage({ params }: Props) {
               <Link
                 href={`/pay/${p.id}`}
                 style={{ color: "#2563eb", fontSize: 13 }}
-                target="_blank"
-                rel="noopener noreferrer"
               >
-                Open invoice ↗
+                Open invoice →
               </Link>
             </Field>
           </>
@@ -201,30 +208,4 @@ function Field({
 
 function Divider() {
   return <div style={{ height: 8 }} />;
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, { bg: string; color: string }> = {
-    PENDING:          { bg: "#f3f4f6", color: "#374151" },
-    AWAITING_PAYMENT: { bg: "#eff6ff", color: "#1d4ed8" },
-    SEEN_IN_MEMPOOL:  { bg: "#fefce8", color: "#92400e" },
-    CONFIRMING:       { bg: "#fff7ed", color: "#c2410c" },
-    CONFIRMED:        { bg: "#f0fdf4", color: "#15803d" },
-    EXPIRED:          { bg: "#f9fafb", color: "#9ca3af" },
-    FAILED:           { bg: "#fef2f2", color: "#dc2626" },
-  };
-  const c = colors[status] ?? { bg: "#f3f4f6", color: "#374151" };
-  return (
-    <span style={{
-      display: "inline-block",
-      background: c.bg,
-      color: c.color,
-      borderRadius: 4,
-      padding: "2px 8px",
-      fontSize: 12,
-      fontWeight: 600,
-    }}>
-      {status.replace(/_/g, " ")}
-    </span>
-  );
 }

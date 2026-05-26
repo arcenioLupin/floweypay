@@ -1,4 +1,8 @@
 {
+  "loading": "Loading...",
+  "errorTitle": "Could not load payment",
+  "retry": "Retry",
+
   "brandSubtitle": "Payment Link (BTC • fiat-first)",
   "rateLockPill": "Rate lock: 15m",
 
@@ -7,10 +11,12 @@
   "network_SIGNET": "Test network (Signet)",
   "network_REGTEST": "Local (Regtest)",
 
-  "bannerExpiredTitle": "Expired.",
-  "bannerExpiredBody": "The locked exchange rate expired. (CTA: regenerate invoice)",
-  "bannerFailedTitle": "Failed.",
-  "bannerFailedBody": "This payment could not be processed. (CTA: support / retry)",
+  "bannerExpiredTitle": "Rate lock expired.",
+  "bannerExpiredBody": "Generate a new payment link to continue.",
+  "bannerFailedTitle": "Payment failed.",
+  "bannerFailedBody": "This payment could not be processed. Please contact support.",
+  "bannerConfirmedTitle": "Payment confirmed.",
+  "bannerConfirmedBody": "Your payment has been confirmed on the Bitcoin network.",
 
   "cardQrTitle": "QR + Address",
   "copy": "COPY",
@@ -18,7 +24,9 @@
   "copiedOk": "Address copied ✅",
   "copiedFail": "Couldn't copy 😅",
   "openWallet": "Open in wallet",
+  "openWalletHint": "Opens a BTC wallet app (mobile only)",
   "uriHint": "URI",
+  "labelExpired": "Expired",
 
   "cardDetailsTitle": "Payment details",
 
@@ -48,8 +56,8 @@
   "timeline_confirmed": "Confirmed",
 
   "terminalStatesLabel": "Terminal states",
-  "terminalExpired": "EXPIRED → “Regenerate invoice”",
-  "terminalFailed": "FAILED → support/retry CTA",
+  "terminalExpired": "Expired — regenerate the payment link",
+  "terminalFailed": "Failed — contact support",
   "regenerateInvoice": "Regenerate invoice",
   "regenerating": "Regenerating..."
 }

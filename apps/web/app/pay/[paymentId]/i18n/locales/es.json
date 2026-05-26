@@ -1,4 +1,8 @@
 {
+  "loading": "Cargando...",
+  "errorTitle": "No se pudo cargar el pago",
+  "retry": "Reintentar",
+
   "brandSubtitle": "Link de pago (BTC • fiat-first)",
   "rateLockPill": "TC bloqueado: 15m",
 
@@ -7,10 +11,12 @@
   "network_SIGNET": "Red de prueba (Signet)",
   "network_REGTEST": "Local (Regtest)",
 
-  "bannerExpiredTitle": "Expirado.",
-  "bannerExpiredBody": "El tipo de cambio bloqueado venció. (CTA: regenerar invoice)",
-  "bannerFailedTitle": "Falló.",
-  "bannerFailedBody": "No se pudo procesar este pago. (CTA: soporte / reintentar)",
+  "bannerExpiredTitle": "Tipo de cambio expirado.",
+  "bannerExpiredBody": "Genera un nuevo link de pago para continuar.",
+  "bannerFailedTitle": "Pago fallido.",
+  "bannerFailedBody": "Este pago no pudo procesarse. Por favor contacta al soporte.",
+  "bannerConfirmedTitle": "Pago confirmado.",
+  "bannerConfirmedBody": "Tu pago fue confirmado en la red Bitcoin.",
 
   "cardQrTitle": "QR + Dirección",
   "copy": "COPIAR",
@@ -18,7 +24,9 @@
   "copiedOk": "Dirección copiada ✅",
   "copiedFail": "No se pudo copiar 😅",
   "openWallet": "Abrir en wallet",
+  "openWalletHint": "Abre una app de wallet BTC (solo móvil)",
   "uriHint": "URI",
+  "labelExpired": "Expirado",
 
   "cardDetailsTitle": "Detalles del pago",
 
@@ -48,8 +56,8 @@
   "timeline_confirmed": "Confirmado",
 
   "terminalStatesLabel": "Estados terminales",
-  "terminalExpired": "EXPIRED → “Regenerate invoice”",
-  "terminalFailed": "FAILED → soporte/reintentar CTA",
+  "terminalExpired": "Expirado — regenera el link de pago",
+  "terminalFailed": "Fallido — contacta con soporte",
   "regenerateInvoice": "Regenerar invoice",
   "regenerating": "Regenerando..."
   

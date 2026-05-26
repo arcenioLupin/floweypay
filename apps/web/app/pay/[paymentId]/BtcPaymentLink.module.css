@@ -40,6 +40,7 @@
   gap: 12px;
   background: var(--fp-card);
   box-shadow: var(--fp-shadow);
+  flex-wrap: wrap;
 }
 
 .brand {
@@ -124,8 +125,15 @@
   padding: 14px;
   display: grid;
   place-items: center;
-  min-height: 280px;
+  min-height: 260px;
   background: var(--fp-bg);
+  transition: opacity 200ms ease;
+}
+
+.qrBoxExpired {
+  opacity: 0.25;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* Address + actions */
@@ -205,6 +213,14 @@
   word-break: break-all;
 }
 
+/* Open wallet hint */
+.openWalletHint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--fp-muted);
+  text-align: center;
+}
+
 /* Blocks (right column) */
 .block {
   border: 1px solid var(--fp-border);
@@ -224,23 +240,39 @@
   text-transform: uppercase;
 }
 
+/* Amount — fiat-first hierarchy */
 .amountRow {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.satsBig {
-  font-size: 24px;
+.fiatBig {
+  font-size: 26px;
   font-weight: 900;
   color: var(--fp-text);
+  letter-spacing: -0.5px;
 }
 
-.fiatSmall {
+.satsMuted {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
   color: var(--fp-muted);
-  font-size: 14px;
+}
+
+/* Partial payment rows */
+.partialPayRow {
+  margin-top: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  color: var(--fp-muted);
+}
+
+.overpaidRow {
+  margin-top: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  color: var(--fp-warning);
 }
 
 .mono {
@@ -271,6 +303,18 @@
 .dim {
   color: var(--fp-muted);
   font-size: 12px;
+}
+
+/* Countdown urgency */
+.countdownUrgent {
+  color: var(--fp-error);
+}
+
+/* Copy button fail state */
+.copyBtn[data-copy="fail"] {
+  background: var(--fp-error);
+  border-color: var(--fp-error);
+  box-shadow: 0 6px 14px rgba(239, 68, 68, 0.25);
 }
 
 /* Details */
@@ -334,17 +378,39 @@
   padding: 12px;
   min-height: 72px;
   background: var(--fp-bg);
+  transition: border-color 200ms ease, background 200ms ease;
 }
 
 .stepActive {
-  border-color: rgba(37, 99, 235, 0.35);
-  background: rgba(37, 99, 235, 0.10);
+  border-color: rgba(37, 99, 235, 0.4);
+  background: rgba(37, 99, 235, 0.08);
 }
 
-.stepTitle {
+.stepDone {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.07);
+}
+
+.stepNum {
+  font-size: 11px;
   font-weight: 900;
-  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+  color: var(--fp-muted);
+  margin-bottom: 5px;
+}
+
+.stepActive .stepNum {
+  color: var(--fp-primary);
+}
+
+.stepDone .stepNum {
+  color: var(--fp-success);
+}
+
+.stepLabel {
+  font-size: 13px;
   color: var(--fp-text);
+  line-height: 1.35;
 }
 
 .timelineHint {
@@ -368,6 +434,13 @@
 .banner[data-status="CONFIRMED"] {
   border-color: rgba(34,197,94,0.35);
   background: rgba(34,197,94,0.10);
+}
+
+/* Banner confirmed */
+.banner[data-status="CONFIRMED"] {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.10);
+  color: #14532D;
 }
 
 /* Status chip default already looks like warning, but we override per state */
@@ -411,6 +484,41 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .headerRight {
+    width: 100%;
+  }
+
+  .logo {
+    font-size: 20px;
+  }
+
+  .brand {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .subtitle {
+    font-size: 12px;
+  }
+
+  .pill {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  .headerPills {
+    gap: 6px;
+  }
 }
 
 .langToggle {
@@ -425,7 +533,17 @@
   border: 0;
   padding: 8px 10px;
   cursor: pointer;
-  opacity: 0.85;
+  opacity: 0.55;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fp-text);
+  transition: opacity 80ms ease, color 80ms ease;
+}
+
+.langBtnActive {
+  opacity: 1;
+  font-weight: 800;
+  color: var(--fp-primary);
 }
 
 .langBtnActive {

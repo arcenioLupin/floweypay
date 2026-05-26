@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test lib/security/rateLimit.test.ts app/api/_lib/btc.test.ts app/api/_lib/btcRateService.test.ts \"app/api/public/payment-links/[token]/start/route.test.ts\" app/api/payments/route.test.ts"
+    "test": "tsx --test lib/security/rateLimit.test.ts app/api/_lib/btc.test.ts app/api/_lib/btcRateService.test.ts \"app/api/public/payment-links/[token]/start/route.test.ts\" app/api/payments/route.test.ts app/api/dashboard/stats/route.test.ts app/api/dashboard/chart/daily/route.test.ts"
   },
   "dependencies": {
     "@floweypay/db": "*",
@@ -17,7 +17,8 @@
     "nodemailer": "^8.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-qr-code": "^2.0.18"
+    "react-qr-code": "^2.0.18",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

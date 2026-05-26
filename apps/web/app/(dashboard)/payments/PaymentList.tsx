@@ -51,27 +51,37 @@ export default function PaymentList({
 
   return (
     <div>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
-              <Th>Date</Th>
-              <Th>Product</Th>
-              <Th>Amount</Th>
-              <Th>BTC expected</Th>
-              <Th>BTC received</Th>
-              <Th>Status</Th>
-              <Th>Confs</Th>
-              <Th>Expires</Th>
-              <Th></Th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((row) => (
-              <PaymentRow key={row.id} row={row} />
-            ))}
-          </tbody>
-        </table>
+      {/* ── Desktop table ─────────────────────────────────── */}
+      <div className="fp-table-desktop">
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
+                <Th>Date</Th>
+                <Th>Product</Th>
+                <Th>Amount</Th>
+                <Th>BTC expected</Th>
+                <Th>BTC received</Th>
+                <Th>Status</Th>
+                <Th>Confs</Th>
+                <Th>Expires</Th>
+                <Th></Th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((row) => (
+                <PaymentRow key={row.id} row={row} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Mobile cards ──────────────────────────────────── */}
+      <div className="fp-cards-mobile">
+        {items.map((row) => (
+          <PaymentCard key={row.id} row={row} />
+        ))}
       </div>
 
       {nextCursor && (
@@ -157,12 +167,110 @@ function PaymentRow({ row }: { row: PaymentRowVm }) {
       <Td><span style={{ fontSize: 12, color: "#6b7280" }}>{expiresLabel}</span></Td>
       <Td>
         <Link
-          href={`/payments/${row.id}`}
+          href={`/payments?detail=${row.id}`}
           style={{ color: "#2563eb", fontSize: 12, whiteSpace: "nowrap" }}
         >
           View →
         </Link>
       </Td>
     </tr>
+  );
+}
+
+function PaymentCard({ row }: { row: PaymentRowVm }) {
+  const locale = "en-US";
+
+  const fiatLabel = (() => {
+    try {
+      return formatFiat(row.fiatAmountCents, row.currency, locale);
+    } catch {
+      return `${row.currency} ${(row.fiatAmountCents / 100).toFixed(2)}`;
+    }
+  })();
+
+  const btcExpected = row.btcAmountSats != null
+    ? `${formatSats(BigInt(row.btcAmountSats))} sats`
+    : "—";
+
+  const expiresLabel = row.btcExpiresAt
+    ? new Date(row.btcExpiresAt).toLocaleDateString(locale, {
+        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+      })
+    : "—";
+
+  const dateLabel = new Date(row.createdAt).toLocaleDateString(locale, {
+    month: "short", day: "numeric", year: "numeric",
+  });
+
+  return (
+    <div
+      style={{
+        border: "1px solid #e5e7eb",
+        borderRadius: 10,
+        padding: "14px 16px",
+        background: "#fff",
+        marginBottom: 10,
+        boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+      }}
+    >
+      {/* Row 1: product + status */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: 10,
+          gap: 8,
+        }}
+      >
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 14, color: "#111827" }}>
+            {row.productTitle ?? <span style={{ color: "#9ca3af" }}>—</span>}
+          </div>
+          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+            {dateLabel}
+          </div>
+        </div>
+        <StatusBadge status={row.status} />
+      </div>
+
+      {/* Row 2: amount + btc grid */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "4px 12px",
+          fontSize: 13,
+          marginBottom: 12,
+        }}
+      >
+        <span style={{ color: "#6b7280", fontSize: 12 }}>Amount</span>
+        <span style={{ fontWeight: 700, color: "#111827" }}>{fiatLabel}</span>
+        <span style={{ color: "#6b7280", fontSize: 12 }}>BTC expected</span>
+        <span style={{ fontFamily: "monospace", fontSize: 11, color: "#374151" }}>
+          {btcExpected}
+        </span>
+        <span style={{ color: "#6b7280", fontSize: 12 }}>Expires</span>
+        <span style={{ fontSize: 12, color: "#6b7280" }}>{expiresLabel}</span>
+      </div>
+
+      {/* CTA */}
+      <Link
+        href={`/payments/${row.id}`}
+        style={{
+          display: "block",
+          textAlign: "center",
+          padding: "8px",
+          background: "#eff6ff",
+          borderRadius: 6,
+          color: "#2563eb",
+          fontWeight: 600,
+          fontSize: 13,
+          textDecoration: "none",
+        }}
+      >
+        View details →
+      </Link>
+    </div>
   );
 }
