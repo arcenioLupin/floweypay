@@ -170,16 +170,35 @@ export default async function DashboardPage({ searchParams }: Props) {
           label="Confirmed Revenue"
           value={confirmedRevenue}
           sub="fiat · cents ÷ 100"
-          accent
+          accentColor="green"
+          icon={
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23" />
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          }
         />
         <KpiCard
           label="Confirmed Payments"
           value={stats?.confirmedPaymentsCount ?? "—"}
+          accentColor="blue"
+          icon={
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          }
         />
         <KpiCard
           label="BTC Received"
           value={confirmedSats}
           sub="confirmed only"
+          accentColor="orange"
+          icon={
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9 8h5a2 2 0 0 1 0 4H9V8zm0 4h5.5a2 2 0 0 1 0 4H9v-4z" />
+            </svg>
+          }
         />
         <KpiCard
           label="Active Invoices"

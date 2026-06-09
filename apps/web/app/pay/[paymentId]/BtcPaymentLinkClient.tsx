@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import QRCode from "react-qr-code";
 import styles from "./BtcPaymentLink.module.css";
 import { useI18n } from "./i18n/useI18n";
@@ -61,7 +62,9 @@ const BtcPaymentLinkClient = ({ paymentId }: { paymentId: string }) => {
   if (loading) {
     return (
       <div className={styles.page} style={{ padding: 24 }}>
-        <div className={styles.logo}>FloweyPay</div>
+        <div className={styles.logoWrap}>
+          <Image src="/branding/logo-floweypay.png" alt="FloweyPay" width={160} height={42} style={{ objectFit: "contain" }} />
+        </div>
         <p>{t("loading")}</p>
       </div>
     );
@@ -71,7 +74,9 @@ const BtcPaymentLinkClient = ({ paymentId }: { paymentId: string }) => {
   if (!vm || error) {
     return (
       <div className={styles.page} style={{ padding: 24 }}>
-        <div className={styles.logo}>FloweyPay</div>
+        <div className={styles.logoWrap}>
+          <Image src="/branding/logo-floweypay.png" alt="FloweyPay" width={160} height={42} style={{ objectFit: "contain" }} />
+        </div>
         <h3>{t("errorTitle")}</h3>
         <p style={{ opacity: 0.8 }}>{error ?? "UNKNOWN_ERROR"}</p>
         <button type="button" className={styles.copyBtn} onClick={reload}>
@@ -132,7 +137,28 @@ const BtcPaymentLinkClient = ({ paymentId }: { paymentId: string }) => {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className={styles.header}>
         <div className={styles.brand}>
-          <div className={styles.logo}>FloweyPay</div>
+          <div className={styles.logoWrap}>
+            {/* Desktop logo */}
+            <Image
+              src="/branding/logo-floweypay.png"
+              alt="FloweyPay"
+              width={160}
+              height={42}
+              priority
+              className={styles.logoDesktop}
+              style={{ objectFit: "contain" }}
+            />
+            {/* Mobile logo — swapped in via CSS at ≤640px */}
+            <Image
+              src="/branding/logo-floweypay-v1.1.png"
+              alt="FloweyPay"
+              width={220}
+              height={60}
+              priority
+              className={styles.logoMobile}
+              style={{ objectFit: "contain" }}
+            />
+          </div>
           <div className={styles.subtitle}>{t("brandSubtitle")}</div>
         </div>
 
@@ -335,6 +361,14 @@ const BtcPaymentLinkClient = ({ paymentId }: { paymentId: string }) => {
           <strong>{t("terminalFailed")}</strong>
         </div>
       </section>
+
+      {/* ── Trust indicator ─────────────────────────────────────────────────── */}
+      <div className={styles.trustBadge}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+        Secured by Bitcoin Network
+      </div>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "./LogoutButton";
@@ -61,19 +62,16 @@ export function NavShell({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div style={{ padding: "20px 16px 16px", borderBottom: "1px solid #f3f4f6", marginBottom: 8 }}>
           <Link href="/" style={{ textDecoration: "none" }}>
-            <div
-              style={{
-                fontWeight: 800,
-                fontSize: 16,
-                color: "#2563eb",
-                letterSpacing: "-0.3px",
-                lineHeight: 1,
-              }}
-            >
-              FloweyPay
-            </div>
-            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 3 }}>
-              BTC Payments
+            <Image
+              src="/branding/logo-floweypay.png"
+              alt="FloweyPay"
+              width={140}
+              height={36}
+              priority
+              style={{ display: "block", objectFit: "contain", objectPosition: "left" }}
+            />
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 6, fontStyle: "italic" }}>
+              Cobros simples, control total
             </div>
           </Link>
         </div>
@@ -173,11 +171,13 @@ export function NavShell({ children }: { children: React.ReactNode }) {
           }}
         >
           <Link href="/" style={{ textDecoration: "none" }}>
-            <span
-              style={{ fontWeight: 800, fontSize: 16, color: "#2563eb" }}
-            >
-              FloweyPay
-            </span>
+            <Image
+              src="/branding/logo-floweypay.png"
+              alt="FloweyPay"
+              width={120}
+              height={30}
+              style={{ display: "block", objectFit: "contain" }}
+            />
           </Link>
           <button
             type="button"

@@ -49,6 +49,20 @@
   gap: 14px;
 }
 
+.logoWrap {
+  display: flex;
+  align-items: center;
+}
+
+/* Desktop: show full logo, hide mobile variant */
+.logoDesktop {
+  display: block;
+}
+
+.logoMobile {
+  display: none;
+}
+
 .logo {
   font-size: 28px;
   font-weight: 800;
@@ -95,6 +109,72 @@
 @media (max-width: 900px) {
   .mainGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ── Mobile header: centered compact logo ───────────────────────────────── */
+@media (max-width: 640px) {
+  .page {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  /* Stack header into a single vertical column, centered */
+  .header {
+    padding: 4px 16px;
+    gap: 3px;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Brand becomes a vertical stack centered */
+  .brand {
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+  }
+
+  /* Logo container: full-width, centered — no forced height */
+  .logoWrap {
+    justify-content: center;
+    width: 100%;
+    padding: 0;
+  }
+
+  /* Swap logo variants on mobile */
+  .logoDesktop {
+    display: none;
+  }
+
+  .logoMobile {
+    display: block;
+    width: min(220px, 75vw);
+    height: auto;
+  }
+
+  /* Subtitle centered below the logo */
+  .subtitle {
+    display: block;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  /* Right side (lang toggle + pills) stacked and centered */
+  .headerRight {
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .headerPills {
+    justify-content: center;
+  }
+
+  .pill {
+    padding: 5px 8px;
+    font-size: 12px;
   }
 }
 
@@ -490,8 +570,8 @@
 @media (max-width: 480px) {
   .header {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+    align-items: center;
+    gap: 3px;
   }
 
   .headerRight {
@@ -503,7 +583,7 @@
   }
 
   .brand {
-    gap: 8px;
+    gap: 2px;
     flex-wrap: wrap;
   }
 
@@ -586,5 +666,17 @@
   font-size: 12px;
 }
 
+/* Trust indicator */
+.trustBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--fp-muted);
+  opacity: 0.65;
+  padding: 4px 0 8px;
+  user-select: none;
+}
 
 

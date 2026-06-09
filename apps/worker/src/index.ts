@@ -39,6 +39,8 @@ function backoffMs(attempt: number): number {
   return Math.round(base * jitter);
 }
 
+console.log("[email-mode]", process.env.AUTH_EMAIL_MODE);
+
 // ── Heartbeat ───────────────────────────────────────────────────────────────
 function writeHeartbeat(): void {
   try {

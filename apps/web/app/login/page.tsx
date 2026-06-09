@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 type Step = "email" | "code";
@@ -196,16 +197,16 @@ export default function LoginPage() {
         }}
       >
         {/* Brand */}
-        <p
-          style={{
-            margin: "0 0 28px",
-            fontSize: 18,
-            fontWeight: 700,
-            color: "#111827",
-          }}
-        >
-          FloweyPay
-        </p>
+        <div style={{ display: "flex", justifyContent: "center", margin: "0 0 28px" }}>
+          <Image
+            src="/branding/logo-floweypay.png"
+            alt="FloweyPay"
+            width={160}
+            height={42}
+            priority
+            style={{ objectFit: "contain" }}
+          />
+        </div>
 
         {step === "email" ? (
           /* ── Step 1 ── */
