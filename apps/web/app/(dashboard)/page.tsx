@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { KpiCard } from "./components/KpiCard";
 import { DailyChart } from "./components/DailyChart";
 import { DashboardDateFilters } from "./components/DashboardDateFilters";
+import { T } from "@/app/lib/i18n/T";
 import { formatSats } from "@/app/helpers/btcPaymentLinkHelpers";
 import type { DashboardStats } from "@/app/api/dashboard/stats/route";
 import type { DailyChartRow } from "@/app/api/dashboard/chart/daily/route";
@@ -114,7 +115,15 @@ export default async function DashboardPage({ searchParams }: Props) {
   const conversionLabel = stats ? formatPercent(stats.conversionRate) : "—";
   const conversionSub =
     stats && stats.totalStarted > 0
-      ? `${stats.confirmedPaymentsCount} of ${stats.totalStarted} started`
+      ? (
+          <T
+            k="kpi.conversionSub"
+            params={{
+              count: stats.confirmedPaymentsCount,
+              total: stats.totalStarted,
+            }}
+          />
+        )
       : undefined;
 
   return (
@@ -144,7 +153,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               margin: 0,
             }}
           >
-            Overview
+            <T k="dashboard.title" />
           </h1>
           <p
             style={{
@@ -154,7 +163,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               marginBottom: 0,
             }}
           >
-            BTC on-chain payment metrics
+            <T k="dashboard.subtitle" />
           </p>
         </div>
 
@@ -167,9 +176,9 @@ export default async function DashboardPage({ searchParams }: Props) {
       {/* KPI Cards ---------------------------------------------------------- */}
       <div className="fp-kpi-grid">
         <KpiCard
-          label="Confirmed Revenue"
+          label={<T k="kpi.confirmedRevenue" />}
           value={confirmedRevenue}
-          sub="fiat · cents ÷ 100"
+          sub={<T k="kpi.confirmedRevenueSub" />}
           accentColor="green"
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -179,7 +188,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           }
         />
         <KpiCard
-          label="Confirmed Payments"
+          label={<T k="kpi.confirmedPayments" />}
           value={stats?.confirmedPaymentsCount ?? "—"}
           accentColor="blue"
           icon={
@@ -189,9 +198,9 @@ export default async function DashboardPage({ searchParams }: Props) {
           }
         />
         <KpiCard
-          label="BTC Received"
+          label={<T k="kpi.btcReceived" />}
           value={confirmedSats}
-          sub="confirmed only"
+          sub={<T k="kpi.btcReceivedSub" />}
           accentColor="orange"
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -201,16 +210,16 @@ export default async function DashboardPage({ searchParams }: Props) {
           }
         />
         <KpiCard
-          label="Active Invoices"
+          label={<T k="kpi.activeInvoices" />}
           value={stats?.activeInvoicesCount ?? "—"}
-          sub="awaiting · mempool · confirming"
+          sub={<T k="kpi.activeInvoicesSub" />}
         />
         <KpiCard
-          label="Expired"
+          label={<T k="kpi.expired" />}
           value={stats?.expiredPaymentsCount ?? "—"}
         />
         <KpiCard
-          label="Conversion Rate"
+          label={<T k="kpi.conversionRate" />}
           value={conversionLabel}
           sub={conversionSub}
         />
@@ -232,7 +241,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           href="/payments"
           style={{ fontSize: 14, color: "#2563eb", fontWeight: 500 }}
         >
-          View all payments →
+          <T k="dashboard.viewAllPayments" />
         </Link>
       </div>
     </div>

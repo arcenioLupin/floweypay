@@ -4,11 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatFiat, formatSats } from "@/app/helpers/btcPaymentLinkHelpers";
 import { StatusBadge } from "./PaymentFilters";
+import { useTranslations, type Lang } from "@/app/lib/i18n/useTranslations";
 import type { DetailData } from "./page";
+
+const LOCALES: Record<Lang, string> = { en: "en-US", es: "es-ES" };
 
 export function PaymentDetailPanel({ data: p }: { data: DetailData }) {
   const router = useRouter();
-  const locale = "en-US";
+  const { lang, t } = useTranslations();
+  const locale = LOCALES[lang];
 
   const fiatLabel = (() => {
     try {
@@ -45,12 +49,12 @@ export function PaymentDetailPanel({ data: p }: { data: DetailData }) {
         }}
       >
         <span style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
-          Details
+          {t("detail.details")}
         </span>
         <button
           type="button"
           onClick={() => router.push("/payments")}
-          aria-label="Close"
+          aria-label={t("aria.close")}
           style={{
             background: "none",
             border: "none",
@@ -90,7 +94,7 @@ export function PaymentDetailPanel({ data: p }: { data: DetailData }) {
               margin: "0 0 4px",
             }}
           >
-            {p.title ?? "Payment"}
+            {p.title ?? t("detail.payment")}
           </h2>
           <span
             style={{
@@ -104,23 +108,23 @@ export function PaymentDetailPanel({ data: p }: { data: DetailData }) {
         </div>
 
         {/* Field rows */}
-        <PanelField label="Status">
+        <PanelField label={t("detail.status")}>
           <StatusBadge status={p.status} />
         </PanelField>
-        <PanelField label="Fiat amount">{fiatLabel}</PanelField>
-        {p.message && <PanelField label="Message">{p.message}</PanelField>}
+        <PanelField label={t("detail.fiatAmount")}>{fiatLabel}</PanelField>
+        {p.message && <PanelField label={t("detail.message")}>{p.message}</PanelField>}
 
         <PanelDivider />
 
-        <PanelField label="BTC expected">{btcExpected}</PanelField>
-        <PanelField label="BTC received">{btcReceived}</PanelField>
-        <PanelField label="BTC remaining">{btcRemaining}</PanelField>
+        <PanelField label={t("detail.btcExpected")}>{btcExpected}</PanelField>
+        <PanelField label={t("detail.btcReceived")}>{btcReceived}</PanelField>
+        <PanelField label={t("detail.btcRemaining")}>{btcRemaining}</PanelField>
         {btcOverpaid && (
-          <PanelField label="BTC overpaid" warn>
+          <PanelField label={t("detail.btcOverpaid")} warn>
             {btcOverpaid}
           </PanelField>
         )}
-        <PanelField label="Confirmations">
+        <PanelField label={t("detail.confirmations")}>
           {p.btcAmountSats
             ? `${p.btcConfirmations} / ${p.btcRequiredConfirmations}`
             : "—"}
@@ -128,10 +132,10 @@ export function PaymentDetailPanel({ data: p }: { data: DetailData }) {
 
         <PanelDivider />
 
-        <PanelField label="BTC address" mono>{p.btcAddress ?? "—"}</PanelField>
-        <PanelField label="Network">{p.btcNetwork ?? "—"}</PanelField>
-        <PanelField label="Txid" mono>{p.btcTxid ?? "—"}</PanelField>
-        <PanelField label="Detected at">
+        <PanelField label={t("detail.btcAddress")} mono>{p.btcAddress ?? "—"}</PanelField>
+        <PanelField label={t("detail.network")}>{p.btcNetwork ?? "—"}</PanelField>
+        <PanelField label={t("detail.txid")} mono>{p.btcTxid ?? "—"}</PanelField>
+        <PanelField label={t("detail.detectedAt")}>
           {p.btcDetectedAt
             ? new Date(p.btcDetectedAt).toLocaleString(locale)
             : "—"}
@@ -139,28 +143,28 @@ export function PaymentDetailPanel({ data: p }: { data: DetailData }) {
 
         <PanelDivider />
 
-        <PanelField label="Expires at">
+        <PanelField label={t("detail.expiresAt")}>
           {p.btcExpiresAt
             ? new Date(p.btcExpiresAt).toLocaleString(locale)
             : "—"}
         </PanelField>
-        <PanelField label="Rate locked at">
+        <PanelField label={t("detail.rateLockedAt")}>
           {p.btcRateLockedAt
             ? new Date(p.btcRateLockedAt).toLocaleString(locale)
             : "—"}
         </PanelField>
-        <PanelField label="FX rate">{p.btcFxRateBtcPerFiat ?? "—"}</PanelField>
-        <PanelField label="Rate provider">{p.btcRateProvider ?? "—"}</PanelField>
+        <PanelField label={t("detail.fxRate")}>{p.btcFxRateBtcPerFiat ?? "—"}</PanelField>
+        <PanelField label={t("detail.rateProvider")}>{p.btcRateProvider ?? "—"}</PanelField>
 
         {p.paymentLinkToken && (
           <>
             <PanelDivider />
-            <PanelField label="Invoice">
+            <PanelField label={t("detail.invoice")}>
               <Link
                 href={`/pay/${p.id}`}
                 style={{ color: "#2563eb", fontSize: 13 }}
               >
-                Open invoice →
+                {t("detail.openInvoice")}
               </Link>
             </PanelField>
           </>

@@ -5,6 +5,7 @@ import type { PaymentsListResponse } from "@/app/types/paymentTypes";
 import PaymentList from "./PaymentList";
 import PaymentFilters from "./PaymentFilters";
 import { PaymentDetailPanel } from "./PaymentDetailPanel";
+import { T } from "@/app/lib/i18n/T";
 
 export const metadata: Metadata = { title: "Payments" };
 
@@ -123,11 +124,14 @@ export default async function PaymentsPage({ searchParams }: Props) {
           <h1
             style={{ fontSize: 22, fontWeight: 700, color: "#111827", margin: 0 }}
           >
-            Payments
+            <T k="payments.title" />
           </h1>
           <p style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
-            {data.items.length} record{data.items.length !== 1 ? "s" : ""} shown
-            {data.nextCursor ? " · more available" : ""}
+            <T
+              k={data.items.length === 1 ? "payments.recordShown" : "payments.recordsShown"}
+              params={{ count: data.items.length }}
+            />
+            {data.nextCursor ? <T k="payments.moreAvailable" /> : null}
           </p>
         </header>
 

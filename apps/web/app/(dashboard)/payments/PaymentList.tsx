@@ -5,6 +5,9 @@ import Link from "next/link";
 import type { PaymentRowVm, PaymentsListResponse } from "@/app/types/paymentTypes";
 import { formatFiat, formatSats } from "@/app/helpers/btcPaymentLinkHelpers";
 import { StatusBadge } from "./PaymentFilters";
+import { useTranslations, type Lang } from "@/app/lib/i18n/useTranslations";
+
+const LOCALES: Record<Lang, string> = { en: "en-US", es: "es-ES" };
 
 type Props = {
   initialItems: PaymentRowVm[];
@@ -17,6 +20,7 @@ export default function PaymentList({
   initialNextCursor,
   searchString,
 }: Props) {
+  const { t } = useTranslations();
   const [items, setItems] = useState<PaymentRowVm[]>(initialItems);
   const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
   const [loading, setLoading] = useState(false);
@@ -44,7 +48,7 @@ export default function PaymentList({
   if (items.length === 0) {
     return (
       <p style={{ color: "#6b7280", fontSize: 14, marginTop: 24 }}>
-        No payments found.
+        {t("payments.empty")}
       </p>
     );
   }
@@ -57,14 +61,14 @@ export default function PaymentList({
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
-                <Th>Date</Th>
-                <Th>Product</Th>
-                <Th>Amount</Th>
-                <Th>BTC expected</Th>
-                <Th>BTC received</Th>
-                <Th>Status</Th>
-                <Th>Confs</Th>
-                <Th>Expires</Th>
+                <Th>{t("table.date")}</Th>
+                <Th>{t("table.product")}</Th>
+                <Th>{t("table.amount")}</Th>
+                <Th>{t("table.btcExpected")}</Th>
+                <Th>{t("table.btcReceived")}</Th>
+                <Th>{t("table.status")}</Th>
+                <Th>{t("table.confs")}</Th>
+                <Th>{t("table.expires")}</Th>
                 <Th></Th>
               </tr>
             </thead>
@@ -100,7 +104,7 @@ export default function PaymentList({
               color: "#374151",
             }}
           >
-            {loading ? "Loading…" : "Load more"}
+            {loading ? t("common.loading") : t("action.loadMore")}
           </button>
         </div>
       )}
@@ -125,7 +129,8 @@ function Td({ children, style }: { children?: React.ReactNode; style?: React.CSS
 }
 
 function PaymentRow({ row }: { row: PaymentRowVm }) {
-  const locale = "en-US";
+  const { lang, t } = useTranslations();
+  const locale = LOCALES[lang];
 
   const fiatLabel = (() => {
     try {
@@ -170,7 +175,7 @@ function PaymentRow({ row }: { row: PaymentRowVm }) {
           href={`/payments?detail=${row.id}`}
           style={{ color: "#2563eb", fontSize: 12, whiteSpace: "nowrap" }}
         >
-          View →
+          {t("action.view")}
         </Link>
       </Td>
     </tr>
@@ -178,7 +183,8 @@ function PaymentRow({ row }: { row: PaymentRowVm }) {
 }
 
 function PaymentCard({ row }: { row: PaymentRowVm }) {
-  const locale = "en-US";
+  const { lang, t } = useTranslations();
+  const locale = LOCALES[lang];
 
   const fiatLabel = (() => {
     try {
@@ -244,13 +250,13 @@ function PaymentCard({ row }: { row: PaymentRowVm }) {
           marginBottom: 12,
         }}
       >
-        <span style={{ color: "#6b7280", fontSize: 12 }}>Amount</span>
+        <span style={{ color: "#6b7280", fontSize: 12 }}>{t("table.amount")}</span>
         <span style={{ fontWeight: 700, color: "#111827" }}>{fiatLabel}</span>
-        <span style={{ color: "#6b7280", fontSize: 12 }}>BTC expected</span>
+        <span style={{ color: "#6b7280", fontSize: 12 }}>{t("table.btcExpected")}</span>
         <span style={{ fontFamily: "monospace", fontSize: 11, color: "#374151" }}>
           {btcExpected}
         </span>
-        <span style={{ color: "#6b7280", fontSize: 12 }}>Expires</span>
+        <span style={{ color: "#6b7280", fontSize: 12 }}>{t("table.expires")}</span>
         <span style={{ fontSize: 12, color: "#6b7280" }}>{expiresLabel}</span>
       </div>
 
@@ -269,7 +275,7 @@ function PaymentCard({ row }: { row: PaymentRowVm }) {
           textDecoration: "none",
         }}
       >
-        View details →
+        {t("action.viewDetails")}
       </Link>
     </div>
   );

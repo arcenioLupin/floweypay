@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useTranslations } from "@/app/lib/i18n/useTranslations";
 
 // Inline type to avoid importing from a server-only route file at runtime.
 type DailyChartRow = {
@@ -32,6 +33,8 @@ function shortDate(dateStr: string): string {
 }
 
 export function DailyChart({ days }: Props) {
+  const { t } = useTranslations();
+
   if (days.length === 0) {
     return (
       <div
@@ -45,7 +48,7 @@ export function DailyChart({ days }: Props) {
           fontSize: 14,
         }}
       >
-        No confirmed payments in this period.
+        {t("chart.empty")}
       </div>
     );
   }
@@ -73,7 +76,7 @@ export function DailyChart({ days }: Props) {
           color: "#374151",
         }}
       >
-        Daily Confirmed Payments
+        {t("chart.dailyTitle")}
       </p>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart
@@ -104,7 +107,7 @@ export function DailyChart({ days }: Props) {
               borderRadius: 6,
               boxShadow: "none",
             }}
-            formatter={(value) => [value, "Payments"]}
+            formatter={(value) => [value, t("chart.tooltipPayments")]}
             labelStyle={{ color: "#374151", marginBottom: 4 }}
           />
           <Bar

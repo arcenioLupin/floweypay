@@ -7,9 +7,9 @@ const ACCENT: Record<AccentColor, { border: string; text: string }> = {
 };
 
 type Props = {
-  label: string;
+  label: React.ReactNode;
   value: string | number;
-  sub?: string;
+  sub?: React.ReactNode;
   accent?: boolean;
   accentColor?: AccentColor;
   icon?: React.ReactNode;

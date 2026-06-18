@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "@/app/lib/i18n/useTranslations";
 
 export function DashboardDateFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslations();
 
   const from = searchParams.get("from") ?? "";
   const to = searchParams.get("to") ?? "";
@@ -33,7 +35,7 @@ export function DashboardDateFilters() {
       }}
     >
       <label style={{ fontSize: 13, color: "#374151" }}>
-        From
+        {t("filter.from")}
         <input
           type="date"
           value={from}
@@ -48,7 +50,7 @@ export function DashboardDateFilters() {
         />
       </label>
       <label style={{ fontSize: 13, color: "#374151" }}>
-        To
+        {t("filter.to")}
         <input
           type="date"
           value={to}
@@ -75,7 +77,7 @@ export function DashboardDateFilters() {
             textDecoration: "underline",
           }}
         >
-          Clear
+          {t("filter.clear")}
         </button>
       )}
     </div>

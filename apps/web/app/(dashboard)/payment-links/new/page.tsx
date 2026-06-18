@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "@/app/lib/i18n/useTranslations";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,7 @@ const S = {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function NewPaymentLinkPage() {
+  const { t } = useTranslations();
   const [form, setForm] = useState<FormValues>({
     title: "",
     message: "",
@@ -113,12 +115,12 @@ export default function NewPaymentLinkPage() {
 
     const amountFloat = parseFloat(form.amount.replace(",", "."));
     if (!Number.isFinite(amountFloat) || amountFloat <= 0) {
-      setApiError("Please enter a valid positive amount.");
+      setApiError(t("pl.errInvalidAmount"));
       return;
     }
     const amountCents = Math.round(amountFloat * 100);
     if (amountCents < 1) {
-      setApiError("Amount is too small.");
+      setApiError(t("pl.errAmountTooSmall"));
       return;
     }
 
@@ -149,7 +151,7 @@ export default function NewPaymentLinkPage() {
       if (!productRes.ok || !productJson?.success) {
         const msg =
           (!productJson?.success && productJson?.message) ||
-          "Could not create product.";
+          t("pl.errCreateProduct");
         throw new Error(msg);
       }
 
@@ -171,14 +173,14 @@ export default function NewPaymentLinkPage() {
       if (!linkRes.ok || !linkJson?.success) {
         const msg =
           (!linkJson?.success && linkJson?.message) ||
-          "Could not create payment link.";
+          t("pl.errCreateLink");
         throw new Error(msg);
       }
 
       setSuccess({ publicUrl: linkJson.data.public_url });
     } catch (err) {
       setApiError(
-        err instanceof Error ? err.message : "Unexpected error. Please try again."
+        err instanceof Error ? err.message : t("pl.errUnexpected")
       );
     } finally {
       setSubmitting(false);
@@ -214,7 +216,7 @@ export default function NewPaymentLinkPage() {
           href="/"
           style={{ fontSize: 13, color: "#2563eb", textDecoration: "none" }}
         >
-          ← Dashboard
+          {t("pl.backDashboard")}
         </Link>
 
         <h1
@@ -226,7 +228,7 @@ export default function NewPaymentLinkPage() {
             marginBottom: 4,
           }}
         >
-          Payment link ready
+          {t("pl.readyTitle")}
         </h1>
         <p
           style={{
@@ -236,7 +238,7 @@ export default function NewPaymentLinkPage() {
             marginBottom: 20,
           }}
         >
-          Share this link with your payer. No login required on their end.
+          {t("pl.readySubtitle")}
         </p>
 
         <div style={S.card}>
@@ -250,7 +252,7 @@ export default function NewPaymentLinkPage() {
               margin: "0 0 8px",
             }}
           >
-            Public payment link
+            {t("pl.publicLinkLabel")}
           </p>
 
           {/* URL row */}
@@ -295,7 +297,7 @@ export default function NewPaymentLinkPage() {
                 transition: "background 150ms ease, border-color 150ms ease",
               }}
             >
-              {copyState === "ok" ? "Copied ✓" : "Copy"}
+              {copyState === "ok" ? t("pl.copied") : t("pl.copy")}
             </button>
           </div>
 
@@ -311,7 +313,7 @@ export default function NewPaymentLinkPage() {
               marginBottom: 10,
             }}
           >
-            Open payment page ↗
+            {t("pl.openPaymentPage")}
           </a>
 
           {/* Create another */}
@@ -320,7 +322,7 @@ export default function NewPaymentLinkPage() {
             onClick={handleReset}
             style={S.secondaryBtn}
           >
-            Create another link
+            {t("pl.createAnother")}
           </button>
         </div>
       </div>
@@ -335,7 +337,7 @@ export default function NewPaymentLinkPage() {
         href="/"
         style={{ fontSize: 13, color: "#2563eb", textDecoration: "none" }}
       >
-        ← Dashboard
+        {t("pl.backDashboard")}
       </Link>
 
       <h1
@@ -347,7 +349,7 @@ export default function NewPaymentLinkPage() {
           marginBottom: 4,
         }}
       >
-        New payment link
+        {t("pl.newTitle")}
       </h1>
       <p
         style={{
@@ -357,7 +359,7 @@ export default function NewPaymentLinkPage() {
           marginBottom: 20,
         }}
       >
-        Creates a product and generates a shareable BTC payment link.
+        {t("pl.newSubtitle")}
       </p>
 
       <div style={S.card}>
@@ -365,7 +367,7 @@ export default function NewPaymentLinkPage() {
           {/* Title */}
           <div style={S.fieldGroup}>
             <label htmlFor="pl-title" style={S.label}>
-              Product title{" "}
+              {t("pl.productTitle")}{" "}
               <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <input
@@ -373,7 +375,7 @@ export default function NewPaymentLinkPage() {
               type="text"
               required
               maxLength={120}
-              placeholder="e.g. Consulting session"
+              placeholder={t("pl.productTitlePlaceholder")}
               value={form.title}
               onChange={setField("title")}
               style={S.input}
@@ -384,18 +386,18 @@ export default function NewPaymentLinkPage() {
           {/* Description */}
           <div style={S.fieldGroup}>
             <label htmlFor="pl-message" style={S.label}>
-              Description{" "}
+              {t("pl.description")}{" "}
               <span
                 style={{ fontSize: 11, color: "#9ca3af", fontWeight: 400 }}
               >
-                (optional)
+                {t("pl.optional")}
               </span>
             </label>
             <textarea
               id="pl-message"
               maxLength={500}
               rows={3}
-              placeholder="Additional details shown to the payer"
+              placeholder={t("pl.descriptionPlaceholder")}
               value={form.message}
               onChange={setField("message")}
               style={{ ...S.input, resize: "vertical", height: "auto" }}
@@ -413,7 +415,7 @@ export default function NewPaymentLinkPage() {
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label htmlFor="pl-amount" style={S.label}>
-                Amount <span style={{ color: "#ef4444" }}>*</span>
+                {t("pl.amount")} <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <input
                 id="pl-amount"
@@ -429,7 +431,7 @@ export default function NewPaymentLinkPage() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label htmlFor="pl-currency" style={S.label}>
-                Currency
+                {t("pl.currency")}
               </label>
               <select
                 id="pl-currency"
@@ -470,7 +472,7 @@ export default function NewPaymentLinkPage() {
               cursor: canSubmit ? "pointer" : "not-allowed",
             }}
           >
-            {submitting ? "Creating…" : "Create payment link"}
+            {submitting ? t("pl.creating") : t("pl.create")}
           </button>
         </form>
       </div>

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { formatFiat, formatSats } from "@/app/helpers/btcPaymentLinkHelpers";
 import { StatusBadge } from "../PaymentFilters";
+import { T } from "@/app/lib/i18n/T";
 
 export const metadata: Metadata = { title: "Payment Detail" };
 
@@ -100,31 +101,31 @@ export default async function PaymentDetailPage({ params }: Props) {
         href="/payments"
         style={{ fontSize: 13, color: "#2563eb", textDecoration: "none" }}
       >
-        ← Back to payments
+        <T k="detail.backToPayments" />
       </Link>
 
       <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111827", marginTop: 16, marginBottom: 4 }}>
-        {p.title ?? "Payment"}
+        {p.title ?? <T k="detail.payment" />}
       </h1>
       <p style={{ fontSize: 12, color: "#9ca3af", margin: 0, fontFamily: "monospace" }}>{p.id}</p>
 
       <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 0 }}>
-        <Field label="Status">
+        <Field label={<T k="detail.status" />}>
           <StatusBadge status={p.status} />
         </Field>
-        <Field label="Fiat amount">{fiatLabel}</Field>
-        {p.title && <Field label="Product">{p.title}</Field>}
-        {p.message && <Field label="Message" mono>{p.message}</Field>}
+        <Field label={<T k="detail.fiatAmount" />}>{fiatLabel}</Field>
+        {p.title && <Field label={<T k="detail.product" />}>{p.title}</Field>}
+        {p.message && <Field label={<T k="detail.message" />} mono>{p.message}</Field>}
 
         <Divider />
 
-        <Field label="BTC expected">{btcExpected}</Field>
-        <Field label="BTC received">{btcReceived}</Field>
-        <Field label="BTC remaining">{btcRemaining}</Field>
+        <Field label={<T k="detail.btcExpected" />}>{btcExpected}</Field>
+        <Field label={<T k="detail.btcReceived" />}>{btcReceived}</Field>
+        <Field label={<T k="detail.btcRemaining" />}>{btcRemaining}</Field>
         {btcOverpaid && (
-          <Field label="BTC overpaid" warn>{btcOverpaid}</Field>
+          <Field label={<T k="detail.btcOverpaid" />} warn>{btcOverpaid}</Field>
         )}
-        <Field label="Confirmations">
+        <Field label={<T k="detail.confirmations" />}>
           {p.btcAmountSats
             ? `${p.btcConfirmations} / ${p.btcRequiredConfirmations}`
             : "—"}
@@ -132,10 +133,10 @@ export default async function PaymentDetailPage({ params }: Props) {
 
         <Divider />
 
-        <Field label="BTC address" mono>{p.btcAddress ?? "—"}</Field>
-        <Field label="Network">{p.btcNetwork ?? "—"}</Field>
-        <Field label="Txid" mono>{p.btcTxid ?? "—"}</Field>
-        <Field label="Detected at">
+        <Field label={<T k="detail.btcAddress" />} mono>{p.btcAddress ?? "—"}</Field>
+        <Field label={<T k="detail.network" />}>{p.btcNetwork ?? "—"}</Field>
+        <Field label={<T k="detail.txid" />} mono>{p.btcTxid ?? "—"}</Field>
+        <Field label={<T k="detail.detectedAt" />}>
           {p.btcDetectedAt
             ? new Date(p.btcDetectedAt).toLocaleString(locale)
             : "—"}
@@ -143,25 +144,25 @@ export default async function PaymentDetailPage({ params }: Props) {
 
         <Divider />
 
-        <Field label="Expires at">
+        <Field label={<T k="detail.expiresAt" />}>
           {p.btcExpiresAt ? new Date(p.btcExpiresAt).toLocaleString(locale) : "—"}
         </Field>
-        <Field label="Rate locked at">
+        <Field label={<T k="detail.rateLockedAt" />}>
           {p.btcRateLockedAt ? new Date(p.btcRateLockedAt).toLocaleString(locale) : "—"}
         </Field>
-        <Field label="FX rate (BTC/fiat)">{p.btcFxRateBtcPerFiat ?? "—"}</Field>
-        <Field label="Rate provider">{p.btcRateProvider ?? "—"}</Field>
+        <Field label={<T k="detail.fxRateFull" />}>{p.btcFxRateBtcPerFiat ?? "—"}</Field>
+        <Field label={<T k="detail.rateProvider" />}>{p.btcRateProvider ?? "—"}</Field>
 
         {p.paymentLinkToken && (
           <>
             <Divider />
-            <Field label="Payment link token" mono>{p.paymentLinkToken}</Field>
-            <Field label="Payer invoice">
+            <Field label={<T k="detail.paymentLinkToken" />} mono>{p.paymentLinkToken}</Field>
+            <Field label={<T k="detail.payerInvoice" />}>
               <Link
                 href={`/pay/${p.id}`}
                 style={{ color: "#2563eb", fontSize: 13 }}
               >
-                Open invoice →
+                <T k="detail.openInvoice" />
               </Link>
             </Field>
           </>
@@ -177,7 +178,7 @@ function Field({
   warn,
   children,
 }: {
-  label: string;
+  label: React.ReactNode;
   mono?: boolean;
   warn?: boolean;
   children: React.ReactNode;

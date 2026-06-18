@@ -2,6 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import { useTranslations } from "@/app/lib/i18n/useTranslations";
+import type { MessageKey } from "@/app/lib/i18n/messages/en";
 
 const ALL_STATUSES = [
   "PENDING",
@@ -16,6 +18,7 @@ const ALL_STATUSES = [
 export default function PaymentFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslations();
 
   const activeStatuses = searchParams.getAll("status");
   const from = searchParams.get("from") ?? "";
@@ -60,7 +63,7 @@ export default function PaymentFilters() {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "flex-end", marginBottom: "16px" }}>
       <fieldset style={{ border: "1px solid #d1d5db", borderRadius: 6, padding: "8px 12px" }}>
-        <legend style={{ fontSize: 12, color: "#6b7280", padding: "0 4px" }}>Status</legend>
+        <legend style={{ fontSize: 12, color: "#6b7280", padding: "0 4px" }}>{t("filter.status")}</legend>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {ALL_STATUSES.map((s) => (
             <label key={s} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, cursor: "pointer" }}>
@@ -77,7 +80,7 @@ export default function PaymentFilters() {
 
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <label style={{ fontSize: 13, color: "#374151" }}>
-          From
+          {t("filter.from")}
           <input
             type="date"
             value={from}
@@ -86,7 +89,7 @@ export default function PaymentFilters() {
           />
         </label>
         <label style={{ fontSize: 13, color: "#374151" }}>
-          To
+          {t("filter.to")}
           <input
             type="date"
             value={to}
@@ -100,7 +103,7 @@ export default function PaymentFilters() {
             onClick={onClear}
             style={{ fontSize: 12, color: "#6b7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
           >
-            Clear
+            {t("filter.clear")}
           </button>
         )}
       </div>
@@ -109,6 +112,7 @@ export default function PaymentFilters() {
 }
 
 export function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslations();
   const colors: Record<string, { bg: string; color: string }> = {
     PENDING:          { bg: "#f3f4f6", color: "#374151" },
     AWAITING_PAYMENT: { bg: "#eff6ff", color: "#1d4ed8" },
@@ -119,6 +123,7 @@ export function StatusBadge({ status }: { status: string }) {
     FAILED:           { bg: "#fef2f2", color: "#dc2626" },
   };
   const c = colors[status] ?? { bg: "#f3f4f6", color: "#374151" };
+  const label = t(`status.${status}` as MessageKey);
   return (
     <span style={{
       background: c.bg,
@@ -129,7 +134,7 @@ export function StatusBadge({ status }: { status: string }) {
       fontWeight: 600,
       whiteSpace: "nowrap",
     }}>
-      {status.replace(/_/g, " ")}
+      {label === `status.${status}` ? status.replace(/_/g, " ") : label}
     </span>
   );
 }

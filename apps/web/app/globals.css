@@ -91,6 +91,13 @@ body {
   flex-shrink: 0;
 }
 
+/* Topbar items shown on desktop only (moved into the drawer on mobile) */
+.fp-desktop-only {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Hidden on desktop, shown on mobile */
 .fp-hamburger {
   display: none;
@@ -168,6 +175,11 @@ body {
 
   .fp-mobile-brand {
     display: block;
+  }
+
+  /* Hide desktop-only topbar actions; they live in the drawer on mobile */
+  .fp-desktop-only {
+    display: none;
   }
 }
 

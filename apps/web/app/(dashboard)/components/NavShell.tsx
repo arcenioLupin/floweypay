@@ -5,55 +5,68 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "./LogoutButton";
+import { UserGreeting } from "./UserGreeting";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useTranslations } from "@/app/lib/i18n/useTranslations";
+import type { MessageKey } from "@/app/lib/i18n/messages/en";
 
 const NAV_ITEMS = [
-  { label: "Overview", href: "/" },
-  { label: "Payments", href: "/payments" },
-  { label: "Payment Links", href: "/payment-links/new" },
-] as const;
+  { labelKey: "nav.overview", href: "/" },
+  { labelKey: "nav.payments", href: "/payments" },
+  { labelKey: "nav.paymentLinks", href: "/payment-links/new" },
+] as const satisfies readonly { labelKey: MessageKey; href: string }[];
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname.startsWith(href);
 }
 
+function NavLinks({
+  pathname,
+  t,
+  compact = false,
+}: {
+  pathname: string;
+  t: ReturnType<typeof useTranslations>["t"];
+  compact?: boolean;
+}) {
+  return (
+    <>
+      {NAV_ITEMS.map(({ labelKey, href }) => {
+        const active = isActive(pathname, href);
+        return (
+          <Link
+            key={href}
+            href={href}
+            style={{
+              display: "block",
+              padding: compact ? "10px 14px" : "8px 12px",
+              borderRadius: 6,
+              fontSize: 14,
+              fontWeight: active ? 600 : 400,
+              color: active ? "#2563eb" : "#374151",
+              textDecoration: "none",
+              background: active ? "#eff6ff" : "transparent",
+            }}
+          >
+            {t(labelKey)}
+          </Link>
+        );
+      })}
+    </>
+  );
+}
+
 export function NavShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
+  const { t } = useTranslations();
 
   // Close drawer on navigation — defer to avoid synchronous setState inside effect
   useEffect(() => {
     const id = setTimeout(() => setDrawerOpen(false), 0);
     return () => clearTimeout(id);
   }, [pathname]);
-
-  function NavLinks({ compact = false }: { compact?: boolean }) {
-    return (
-      <>
-        {NAV_ITEMS.map(({ label, href }) => {
-          const active = isActive(pathname, href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              style={{
-                display: "block",
-                padding: compact ? "10px 14px" : "8px 12px",
-                borderRadius: 6,
-                fontSize: 14,
-                fontWeight: active ? 600 : 400,
-                color: active ? "#2563eb" : "#374151",
-                textDecoration: "none",
-                background: active ? "#eff6ff" : "transparent",
-              }}
-            >
-              {label}
-            </Link>
-          );
-        })}
-      </>
-    );
-  }
 
   return (
     <div className="fp-shell">
@@ -71,7 +84,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
               style={{ display: "block", objectFit: "contain", objectPosition: "left" }}
             />
             <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 6, fontStyle: "italic" }}>
-              Cobros simples, control total
+              {t("brand.tagline")}
             </div>
           </Link>
         </div>
@@ -86,7 +99,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             gap: 2,
           }}
         >
-          <NavLinks />
+          <NavLinks pathname={pathname} t={t} />
         </nav>
       </aside>
 
@@ -100,7 +113,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
               type="button"
               className="fp-hamburger"
               onClick={() => setDrawerOpen(true)}
-              aria-label="Open menu"
+              aria-label={t("aria.openMenu")}
             >
               <svg
                 width="20"
@@ -122,8 +135,13 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          {/* Right: actions (always visible) */}
+          {/* Right: actions */}
           <div className="fp-topbar-actions">
+            {/* Desktop-only: language switcher */}
+            <span className="fp-desktop-only">
+              <LanguageSwitcher />
+            </span>
+            {/* Always visible */}
             <Link
               href="/payment-links/new"
               style={{
@@ -137,9 +155,13 @@ export function NavShell({ children }: { children: React.ReactNode }) {
                 whiteSpace: "nowrap",
               }}
             >
-              + New Link
+              {t("action.newLink")}
             </Link>
-            <LogoutButton />
+            {/* Desktop-only: greeting + logout (shown in drawer on mobile) */}
+            <span className="fp-desktop-only">
+              <UserGreeting />
+              <LogoutButton />
+            </span>
           </div>
         </header>
 
@@ -182,7 +204,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setDrawerOpen(false)}
-            aria-label="Close menu"
+            aria-label={t("aria.closeMenu")}
             style={{
               background: "none",
               border: "none",
@@ -218,7 +240,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             gap: 2,
           }}
         >
-          <NavLinks compact />
+          <NavLinks pathname={pathname} t={t} compact />
         </nav>
 
         {/* Drawer bottom: actions */}
@@ -231,6 +253,8 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             gap: 8,
           }}
         >
+          {/* Language switcher — lives in the drawer on mobile */}
+          <LanguageSwitcher />
           <Link
             href="/payment-links/new"
             style={{
@@ -245,8 +269,9 @@ export function NavShell({ children }: { children: React.ReactNode }) {
               textAlign: "center",
             }}
           >
-            + New Link
+            {t("action.newLink")}
           </Link>
+          <UserGreeting />
           <LogoutButton />
         </div>
       </div>
