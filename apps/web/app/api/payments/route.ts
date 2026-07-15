@@ -4,8 +4,6 @@ import { requireUserId } from "@/app/api/_lib/auth";
 import type { PaymentsListResponse } from "@/app/types/paymentTypes";
 import {
   buildStatusWhereClause,
-  DEFAULT_LIMIT,
-  MAX_LIMIT,
   mapRowToPaymentRowVm,
   parseLimitParam,
   parseStatusFilter,
