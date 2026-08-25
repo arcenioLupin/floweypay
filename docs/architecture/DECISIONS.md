@@ -92,6 +92,17 @@ Este documento permite que un desarrollador nuevo entienda la arquitectura de Fl
 - Entrada del comercio tratada como no confiable; validación estricta vía Bitcoin Core.
 - Ver [11-security-model.md](./11-security-model.md).
 
+## Modelo de persistencia de wallet (DB-001 — diseño aprobado)
+
+- Diseño **aprobado** (D1–D16); implementación **pendiente** (DB-006).
+- Dos entidades: **`MerchantWallet`** (identidad lógica estable / linaje de **Wallet Rotation**) → **`MerchantWalletVersion`** (identidad de derivación pública **inmutable** + ciclo de vida).
+- **MVP:** exactamente **una** `MerchantWallet` por merchant (`UNIQUE(merchant_id)`); a lo sumo **una** versión **`ACTIVE`** por wallet (índice parcial único de PostgreSQL).
+- **Fuente de verdad:** el **Output Descriptor** canónico BIP84 **incluyendo checksum**. `descriptor_checksum` es metadata derivada/validada, **no** un identificador único. `master_fingerprint`, `derivation_path`, `network` y `script_type` (**P2WPKH** en MVP) se validan y deben ser mutuamente consistentes con el Descriptor.
+- **Ciclo de vida:** solo **`ACTIVE`** / **`RETIRED`** (`ACTIVE → RETIRED` one-way); las versiones `RETIRED` permanecen persistidas, atribuibles y monitorizables. La **Wallet Rotation** crea una **nueva** versión; nunca muta la identidad de derivación existente.
+- **Unicidad:** el Descriptor canónico completo es **globalmente único** (`UNIQUE(descriptor)`); **no** hay `UNIQUE(descriptor_checksum)`.
+- **Fuera de DB-001:** Allocation Ledger e índices de derivación (DB-002), `recovery_state` + monitoring (DB-003), Durable HWM (INFRA-001), Late Payment + conciliación (DB-004), esquema/migraciones (DB-006). DB-001 solo provee el `wallet_version_id` estable que esas tareas referencian; **no** reintroduce un `next_index` mutable como autoridad de asignación.
+- Ver [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md).
+
 ## Roadmap futuro
 
 - **ARCH-005 (diseño aprobado; implementación pendiente):** reconciliación de índices y Backup Recovery (Durable HWM, Allocation Ledger, fail-closed, Recovery State Machine).

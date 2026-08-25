@@ -25,6 +25,23 @@ El **diseño** de ARCH-006 (D1–D12) está **aprobado** y ha dejado de ser un e
 
 Referencia: [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md), [ADR.md § ARCH-006](./ADR.md#arch-006--late-payment-policy), [09 — Wallet Rotation](./09-wallet-rotation.md).
 
+## Secuencia de tareas de persistencia (DB-001 → DB-006)
+
+El **diseño** de DB-001 está **aprobado** (D1–D16); su **implementación** pertenece a DB-006. DB-001 es el paso 1 del orden de implementación de [ARCH-005 D10](./ARCH-005-index-reconciliation-recovery.md#d10--implementation-order) ("Modelo de persistencia de wallet version") y establece el ancla `wallet_version_id` que las tareas siguientes referencian.
+
+```mermaid
+flowchart TB
+    DB001["DB-001 — diseño aprobado<br/>MerchantWallet + MerchantWalletVersion"]
+    DB002["DB-002 — Allocation Ledger<br/>invoice ↔ wallet_version ↔ derivation_index"]
+    DB003["DB-003 — Recovery State + monitoring metadata"]
+    INFRA001["INFRA-001 — Durable HWM<br/>(persistencia independiente)"]
+    DB004["DB-004 — Late Payment + Reconciliation"]
+    DB006["DB-006 — migraciones / implementación"]
+    DB001 --> DB002 --> DB003 --> INFRA001 --> DB004 --> DB006
+```
+
+Referencia: [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [ADR.md § DB-001](./ADR.md#db-001--merchant-wallet--wallet-versions), [14 — Decisiones de arquitectura](./14-architecture-decisions.md).
+
 ## Extensiones de protocolo
 
 Estado: **Planificado**.

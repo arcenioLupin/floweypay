@@ -165,7 +165,7 @@ El **Durable HWM** DEBE tener un ciclo de vida de recuperación **independiente*
 
 Las garantías de asignación/recuperación deben existir **ANTES** de habilitar la derivación de direcciones non-custodial en producción. Precedencia arquitectónica de implementación:
 
-1. Modelo de persistencia de wallet version.
+1. Modelo de persistencia de wallet version (**DB-001** — diseño aprobado; ver [DB-001](./DB-001-merchant-wallet-wallet-versions.md)).
 2. Allocation Ledger.
 3. Mecanismo de Durable HWM.
 4. Protocolo de asignación seguro/atómico.

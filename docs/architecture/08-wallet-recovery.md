@@ -53,7 +53,7 @@ Cuando FloweyPay pierde o revierte su propio estado, debe probar el siguiente í
 
 El **Recovery Package** ([8.1](#81-recovery-package-arch-003)) es aquí evidencia **condicional/auxiliar**: puede ayudar a **avanzar** un cursor, pero **nunca** mueve el HWM ni el `safe_next_index` hacia atrás. Detalle completo, estados de recuperación y diagramas en [ARCH-005](./ARCH-005-index-reconciliation-recovery.md).
 
-> **Estado:** diseño **aprobado**; implementación **pendiente**. Hoy el repositorio no implementa aún HWM, Allocation Ledger ni motor de reconciliación.
+> **Estado:** diseño **aprobado**; implementación **pendiente**. Hoy el repositorio no implementa aún HWM, Allocation Ledger ni motor de reconciliación. El modelo de persistencia de la **wallet version** que estos mecanismos referencian (`MerchantWallet` → `MerchantWalletVersion`) se diseña en [DB-001](./DB-001-merchant-wallet-wallet-versions.md) (diseño aprobado; implementación pendiente).
 
 Diagrama de secuencia: ver [13 — Diagramas de secuencia § Wallet Recovery](./13-sequence-diagrams.md#135-wallet-recovery).
 

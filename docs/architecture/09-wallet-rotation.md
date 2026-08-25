@@ -8,7 +8,7 @@ Implementa [ARCH-002](./14-architecture-decisions.md) (Wallet Rotation, Descript
 
 ## 9.1 Wallet vieja → wallet nueva
 
-Un comercio puede rotar a una wallet nueva (nuevo Descriptor, `next_address_index = 0` reiniciado). Los invoices nuevos usan la wallet nueva; los invoices existentes conservan sus direcciones ya derivadas.
+Un comercio puede rotar a una wallet nueva (nuevo Descriptor). En el modelo de persistencia aprobado ([DB-001](./DB-001-merchant-wallet-wallet-versions.md)), la rotación crea una **nueva `MerchantWalletVersion`** (`version = N+1`, `ACTIVE`) y transiciona la anterior a `RETIRED` de forma atómica; la identidad de derivación de las versiones previas es inmutable. Los invoices nuevos usan la wallet nueva; los invoices existentes conservan sus direcciones ya derivadas. **Observación:** cualquier reinicio conceptual del cursor de asignación de la nueva versión **no** constituye la autoridad de asignación/recuperación; esa autoridad es el Allocation Ledger (DB-002) + Durable HWM (INFRA-001) por wallet version ([ARCH-005](./ARCH-005-index-reconciliation-recovery.md)).
 
 ## 9.2 Monitoring
 

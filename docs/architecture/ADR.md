@@ -13,6 +13,14 @@ Este documento indexa todas las decisiones de arquitectura de FloweyPay. Cada AD
 | [ARCH-005](#arch-005--index-reconciliation--backup-recovery) | Index Reconciliation & Backup Recovery | Aprobado (diseño); implementación pendiente |
 | [ARCH-006](#arch-006--late-payment-policy) | Late Payment Policy | Aprobado (diseño); implementación pendiente |
 
+### Tareas de persistencia de base de datos
+
+Estas tareas **construyen sobre** las decisiones ARCH aprobadas y las materializan en el modelo de datos. **No** rediseñan ninguna decisión ARCH.
+
+| Tarea | Título | Estado |
+|---|---|---|
+| [DB-001](#db-001--merchant-wallet--wallet-versions) | Merchant Wallet + Wallet Versions | Aprobado (diseño); implementación pendiente |
+
 ---
 
 ## ARCH-001 — Non-Custodial Architecture
@@ -129,3 +137,21 @@ Este documento indexa todas las decisiones de arquitectura de FloweyPay. Cada AD
 - **Documentación relacionada:** [05-customer-payment-flow.md](./05-customer-payment-flow.md), [06-bitcoin-processing.md](./06-bitcoin-processing.md), [07-merchant-dashboard.md](./07-merchant-dashboard.md), [09-wallet-rotation.md](./09-wallet-rotation.md), [15-future-roadmap.md](./15-future-roadmap.md).
 - **Dependencias:** ARCH-002 (derivación por invoice), ARCH-005 (monitoring por wallet version). No debe conflarse **index reconciliation** (ARCH-005, seguridad de asignación) con **payment reconciliation** (ARCH-006, qué ocurrió con los BTC recibidos).
 - **Consideraciones futuras (fuera de MVP):** ejecución/firma de reembolsos on-chain, gestión de disputas, aceptación automática, decommission de wallet versions, deep-reorg. Extensiones de protocolo (Taproot, Multisig, Lightning, multi-wallet) permanecen **planificadas** en [15-future-roadmap.md](./15-future-roadmap.md).
+
+---
+
+## DB-001 — Merchant Wallet + Wallet Versions
+
+- **Título:** Modelo de persistencia de Merchant Wallet + Wallet Versions.
+- **Estado del diseño:** **Aprobado** (decisiones D1–D16). **Estado de implementación:** **Pendiente** (pertenece a DB-006).
+- **Prioridad:** P0.
+- **Resumen:**
+  - Dos entidades: **`MerchantWallet`** (identidad lógica estable / linaje de Wallet Rotation) → **`MerchantWalletVersion`** (identidad de derivación pública inmutable + ciclo de vida) (**D1**).
+  - MVP: exactamente **una** `MerchantWallet` por merchant (`UNIQUE(merchant_id)`) (**D2**); a lo sumo **una** versión `ACTIVE` por wallet, DB-enforced con índice parcial único (**D3**).
+  - **Output Descriptor** canónico BIP84 incl. checksum como fuente de verdad (**D4**); `master_fingerprint` (**D5**), `derivation_path` (**D6**), `network` (**D7**) y `script_type` = **P2WPKH** MVP (**D8**) validados y consistentes con el Descriptor.
+  - Versionado dual UUID + secuencia (**D9**); ciclo de vida **solo** `ACTIVE` / `RETIRED` (**D10**).
+  - `recovery_state` diferido a DB-003 (**D11**); sin índice/cursor/HWM en DB-001 (**D12**); `UNIQUE(descriptor)` global, **no** `UNIQUE(descriptor_checksum)` (**D13**); atribución legacy vía `wallet_version_id = NULL` en DB-002 (**D14**); versiones usadas nunca borradas (**D15**); política de seguridad/privacidad del Descriptor (**D16**).
+- **Documento dedicado:** [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md).
+- **Documentación relacionada:** [03-merchant-onboarding.md](./03-merchant-onboarding.md), [08-wallet-recovery.md](./08-wallet-recovery.md), [09-wallet-rotation.md](./09-wallet-rotation.md), [11-security-model.md](./11-security-model.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md).
+- **Dependencias:** ARCH-001 (Descriptor como fuente de verdad), ARCH-002 (metadata de wallet, rotación), ARCH-003 (Recovery Package), ARCH-005 D5/D10 (wallet version como dominio de reconciliación; paso 1 del orden de implementación).
+- **Consideraciones futuras:** DB-002 (Allocation Ledger + relación `invoice ↔ wallet_version ↔ derivation_index`), DB-003 (Recovery State + monitoring), INFRA-001 (Durable HWM), DB-004 (Late Payment + conciliación), DB-006 (esquema Prisma + constraints + migraciones).

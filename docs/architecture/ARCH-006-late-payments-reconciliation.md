@@ -99,7 +99,7 @@ El estado on-chain y la conciliación del comercio son **independientes**. Si un
 
 ### D12 — Wallet version attribution
 
-Todo Late Payment permanece atribuible a: su **invoice original**, su **dirección derivada** y la **wallet version** desde la que esa dirección fue derivada. Ejemplo: invoice creado con **Wallet Version 1**; el comercio rota a **Wallet Version 2**; V1 queda **RETIRED** pero monitoreada; el cliente paga tarde la dirección vieja → el Late Payment se detecta, se asocia al invoice original y se atribuye a **Wallet Version 1**. La rotación de wallet **no** cambia la clasificación de timing ni de amount. Esto **depende** de que el monitoring por wallet version de [ARCH-005](./ARCH-005-index-reconciliation-recovery.md) esté implementado.
+Todo Late Payment permanece atribuible a: su **invoice original**, su **dirección derivada** y la **wallet version** desde la que esa dirección fue derivada. Ejemplo: invoice creado con **Wallet Version 1**; el comercio rota a **Wallet Version 2**; V1 queda **RETIRED** pero monitoreada; el cliente paga tarde la dirección vieja → el Late Payment se detecta, se asocia al invoice original y se atribuye a **Wallet Version 1**. La rotación de wallet **no** cambia la clasificación de timing ni de amount. Esto **depende** de que el monitoring por wallet version de [ARCH-005](./ARCH-005-index-reconciliation-recovery.md) esté implementado. La entidad de persistencia `MerchantWalletVersion` que hace posible esta atribución permanente —incluidas las versiones `RETIRED`, que nunca se borran— se diseña en [DB-001](./DB-001-merchant-wallet-wallet-versions.md) (diseño aprobado; implementación pendiente).
 
 ---
 

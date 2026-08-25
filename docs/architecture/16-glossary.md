@@ -14,6 +14,9 @@ Terminología de Bitcoin e ingeniería usada en esta documentación. Los términ
 - **P2WPKH** — Pay-to-Witness-Public-Key-Hash; el script type Native SegWit de clave única usado en el MVP.
 - **Recovery Package** — exportación firmada y Watch-only (Descriptor, checksum, Fingerprint, path, network, último índice asignado/fondeado, rango de importación recomendado, historial de rotación, firma) que habilita la recuperación independiente de FloweyPay.
 - **Wallet Rotation** — cambio del comercio a un nuevo Descriptor mientras se continúa monitoreando el viejo por pagos tardíos.
+- **MerchantWallet** — entidad de persistencia (DB-001) que representa la **identidad lógica estable** de la wallet de un comercio y el **linaje de Wallet Rotation**; sobrevive a las rotaciones. MVP: una por merchant.
+- **MerchantWalletVersion** — entidad de persistencia (DB-001) que representa la **identidad de derivación pública inmutable** de una versión de wallet (Descriptor, checksum, Fingerprint, Derivation Path, network, script type) más su ciclo de vida `ACTIVE`/`RETIRED`. Es el ancla `wallet_version_id` que referencian DB-002/003/004 e INFRA-001.
+- **Wallet lifecycle (ACTIVE / RETIRED)** — ciclo de vida por versión de wallet en DB-001: `ACTIVE → RETIRED` es unidireccional; las versiones `RETIRED` nunca se borran y permanecen atribuibles/monitorizables (DB-001 D10/D15).
 - **Watch-only** — capacidad de ver direcciones/saldos sin capacidad de gastar; FloweyPay es estrictamente Watch-only.
 - **XPUB** — clave pública extendida; puede derivar todas las claves/direcciones públicas hijas de una cuenta (no puede gastar).
 - **ZPUB** — variante SLIP-132 de XPUB que señala Native SegWit (BIP84); codifica solo la pista de script type, no el Fingerprint/path.

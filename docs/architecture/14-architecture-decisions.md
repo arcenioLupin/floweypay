@@ -95,4 +95,31 @@ Principio: FloweyPay **registra objetivamente lo que ocurrió en Bitcoin**, **pr
 
 ---
 
+## DB-001 — Merchant Wallet + Wallet Versions
+
+> **Estado del diseño: Aprobado** (D1–D16). **Implementación: pendiente** (DB-006). Documento dedicado: [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md).
+
+Materializa la persistencia que ARCH-001/002/003/005 presuponen. **No** rediseña ninguna decisión ARCH. Dos entidades: **`MerchantWallet`** (identidad lógica / linaje de rotación) → **`MerchantWalletVersion`** (identidad de derivación pública inmutable + ciclo de vida).
+
+| Decisión | Por qué existe |
+|---|---|
+| **D1 — Table topology** | Separar identidad lógica estable (`MerchantWallet`) de las versiones inmutables (`MerchantWalletVersion`); da hogar al linaje de rotación y al Recovery Package. |
+| **D2 — MVP wallet cardinality** | Exactamente una wallet por merchant (`UNIQUE(merchant_id)`); multi-wallet fuera de MVP, relajable después. |
+| **D3 — Active version invariant** | A lo sumo una versión `ACTIVE` por wallet; índice parcial único (`WHERE lifecycle = 'ACTIVE'`); la app sola no basta. |
+| **D4 — Canonical wallet material** | Output Descriptor BIP84 incl. checksum como fuente de verdad; `descriptor_checksum` derivado y **no** único. |
+| **D5 — Master fingerprint** | Persistido independientemente (8 hex/4 bytes), validado contra la key-origin; inmutable tras activación. |
+| **D6 — Derivation path** | Denormalización validada; el Descriptor es la fuente de verdad; metadata mutuamente consistente. |
+| **D7 — Network** | Explícito (`MAINNET/TESTNET/SIGNET/REGTEST`), validado contra el coin type; previene errores cross-network. |
+| **D8 — Script type** | Explícito, **P2WPKH** en MVP; sin Taproot/Multisig/Lightning. |
+| **D9 — Wallet version identity** | `id` UUID + `version` secuencial (`> 0`, único por wallet); rotación crea `N+1`; nunca se sobrescribe. |
+| **D10 — Lifecycle** | Solo `ACTIVE`/`RETIRED`; sin `PENDING_VERIFICATION`/`DISABLED`/`ARCHIVED`; one-way; `RETIRED` permanece atribuible/monitorizable. |
+| **D11 — Recovery state** | Diferido a DB-003; DB-001 provee `MerchantWalletVersion.id` como ancla. |
+| **D12 — Index / cursor / HWM** | DB-001 no persiste `next_index`/cursor/`highest_ever_allocated_index`/Durable HWM; pertenecen a DB-002/INFRA-001. |
+| **D13 — Descriptor uniqueness** | `UNIQUE(descriptor)` global; **no** `UNIQUE(descriptor_checksum)`. |
+| **D14 — Legacy payment attribution** | Sin wallet version sintética sin Descriptor; DB-002 permitirá `wallet_version_id = NULL`; DB-001 no modifica `Payment`. |
+| **D15 — Deletion policy** | Versiones usadas nunca se borran; `RETIRED` reemplaza al borrado; `MerchantWallet` permanece con historial. |
+| **D16 — Descriptor security** | MVP: cifrado en reposo/backups, privilegio mínimo, sin loguear/telemetrizar/exponer el Descriptor completo; cifrado de columna diferido. |
+
+---
+
 **Siguiente:** [15 — Roadmap futuro](./15-future-roadmap.md)

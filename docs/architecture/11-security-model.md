@@ -39,7 +39,7 @@ Relacionado con [ARCH-001](./14-architecture-decisions.md) y [ARCH-003](./14-arc
 
 ## 11.5 Modelo de privacidad
 
-El Descriptor/XPUB es **el artefacto más sensible a la privacidad** — revela todas las direcciones pasadas y futuras y todo el historial de facturación. Tratar descriptors, Fingerprints e historial de índices fondeados/rotación como confidenciales; firmar y cifrar los Recovery Packages; restringir el acceso interno.
+El Descriptor/XPUB es **el artefacto más sensible a la privacidad** — revela todas las direcciones pasadas y futuras y todo el historial de facturación. Tratar descriptors, Fingerprints e historial de índices fondeados/rotación como confidenciales; firmar y cifrar los Recovery Packages; restringir el acceso interno. La política de persistencia del material Descriptor (cifrado en reposo/backups, privilegio mínimo, acceso de servicios restringido, no loguear/telemetrizar/exponer el Descriptor completo; cifrado a nivel de columna **diferido**) se consolida en [DB-001 § 13](./DB-001-merchant-wallet-wallet-versions.md#13-seguridad--privacidad) (D16).
 
 ---
 

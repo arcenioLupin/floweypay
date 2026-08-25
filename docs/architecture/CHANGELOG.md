@@ -50,6 +50,20 @@ Documentación asociada: [ARCH-006-late-payments-reconciliation.md](./ARCH-006-l
 
 ---
 
+## Versión 1.4 — DB-001: Merchant Wallet + Wallet Versions (Diseño aprobado)
+
+Estado: **Aprobado (diseño); implementación pendiente**.
+
+Adición de diseño de persistencia (solo diseño; **no** representa implementación completada). Construye sobre ARCH-001…006 sin rediseñarlas:
+
+- **DB-001** — Merchant Wallet + Wallet Versions. Aprobadas las decisiones **D1–D16**: dos entidades `MerchantWallet` → `MerchantWalletVersion`; MVP con **una** wallet por merchant (`UNIQUE(merchant_id)`) y a lo sumo **una** versión `ACTIVE` por wallet (índice parcial único); **Output Descriptor** canónico BIP84 incl. checksum como fuente de verdad; `master_fingerprint`, `derivation_path`, `network` y `script_type` (**P2WPKH** MVP) validados y consistentes; versionado UUID + secuencia; ciclo de vida **solo** `ACTIVE`/`RETIRED`; inmutabilidad de la identidad de derivación tras activación; `UNIQUE(descriptor)` global (**no** `UNIQUE(descriptor_checksum)`); versiones usadas nunca borradas; política de seguridad/privacidad del Descriptor con cifrado a nivel de columna **diferido**.
+- **Explícitamente fuera de DB-001:** Allocation Ledger e índices de derivación (**DB-002**), Recovery State + monitoring (**DB-003**), Durable HWM (**INFRA-001**), Late Payment + conciliación (**DB-004**), esquema Prisma + constraints + migraciones (**DB-006**).
+- La **implementación** (esquema, constraints PostgreSQL, migraciones) **permanece pendiente** (DB-006). Hoy el repositorio no contiene aún tablas `MerchantWallet`/`MerchantWalletVersion` ni persistencia de Descriptor.
+
+Documentación asociada: [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [ADR.md § DB-001](./ADR.md#db-001--merchant-wallet--wallet-versions), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md), [16-glossary.md](./16-glossary.md).
+
+---
+
 ## Versión 1.1 — Mejoras planificadas (Placeholder)
 
 Estado: **Planificado**.

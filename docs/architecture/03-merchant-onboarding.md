@@ -49,8 +49,8 @@ Bitcoin Core deriva la **Address #0** del Descriptor. El comercio debe confirmar
 
 Ante una coincidencia exitosa, FloweyPay:
 
-- Persiste la **metadata de la wallet** — wallet ID, network, script type, Derivation Path, Fingerprint, Descriptor, checksum (ARCH-002).
-- Inicializa `next_address_index = 0`.
+- Persiste la **metadata de la wallet** — wallet ID, network, script type, Derivation Path, Fingerprint, Descriptor, checksum (ARCH-002). En el modelo de persistencia aprobado, esta metadata corresponde a una **`MerchantWalletVersion`** `ACTIVE` bajo el `MerchantWallet` del comercio ([DB-001](./DB-001-merchant-wallet-wallet-versions.md) — diseño aprobado; implementación pendiente).
+- Inicializa el cursor de asignación de direcciones en 0. **Observación (aprobada):** cualquier `next_address_index` mutable es una descripción funcional simplificada y **no** es la autoridad de asignación/recuperación. La autoridad aprobada es el **Allocation Ledger** (DB-002) más el **Durable HWM** (INFRA-001) con reconciliación por wallet version ([ARCH-005](./ARCH-005-index-reconciliation-recovery.md)). DB-001 **no** persiste ningún cursor/índice.
 - Instruye a Bitcoin Core a **observar un rango explícito del Descriptor, adelantado a la asignación** (ARCH-002).
 
 ## 3.6 Casos de falla
