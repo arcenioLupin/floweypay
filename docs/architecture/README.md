@@ -4,7 +4,7 @@
 
 > FloweyPay **no es** una wallet. **No es** un custodio. **Nunca** firma transacciones. El comercio siempre es el único propietario de su seed y de sus private keys.
 
-Este repositorio de documentación describe la arquitectura **aprobada** (ARCH-001, ARCH-002, ARCH-003, ARCH-004, y el **diseño** de ARCH-005). Su objetivo es servir como fuente única de referencia para desarrolladores, arquitectos, QA, revisión de seguridad, auditores y futuros colaboradores.
+Este repositorio de documentación describe la arquitectura **aprobada** (ARCH-001, ARCH-002, ARCH-003, ARCH-004, y el **diseño** de ARCH-005 y ARCH-006). Su objetivo es servir como fuente única de referencia para desarrolladores, arquitectos, QA, revisión de seguridad, auditores y futuros colaboradores.
 
 ---
 
@@ -53,6 +53,7 @@ flowchart LR
 | [DECISIONS.md](./DECISIONS.md) | Resumen conciso de todas las decisiones de arquitectura actuales. |
 | [CHANGELOG.md](./CHANGELOG.md) | Historial de versiones de la arquitectura. |
 | [ARCH-005-index-reconciliation-recovery.md](./ARCH-005-index-reconciliation-recovery.md) | Decisión ARCH-005 (D1–D10): Index Reconciliation & Backup Recovery. Diseño **aprobado**; implementación pendiente. |
+| [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md) | Decisión ARCH-006 (D1–D12): Late Payments & Reconciliation. Diseño **aprobado**; implementación pendiente. |
 
 ### Especificación funcional (ARCH-004)
 
@@ -86,7 +87,7 @@ flowchart LR
 | **ARCH-003** | Wallets soportadas y estrategia de recuperación | Aprobado |
 | **ARCH-004** | Especificación de arquitectura funcional | Aprobado |
 | **ARCH-005** | Reconciliación de índices y Backup Recovery | Aprobado (diseño); implementación pendiente |
-| **ARCH-006** | Política de Late Payment | Planificado |
+| **ARCH-006** | Late Payments y conciliación | Aprobado (diseño); implementación pendiente |
 
 Ver el detalle completo en [ADR.md](./ADR.md).
 

@@ -105,7 +105,7 @@ La falla se aísla al **menor alcance seguro**, idealmente la wallet version afe
 
 El dominio de reconciliación es la **wallet version**, **no** el comercio globalmente. Cada wallet version mantiene de forma independiente: Output Descriptor, cursor de derivación, Allocation Ledger, Durable HWM, rango de descriptor monitoreado y estado de recuperación.
 
-Solo la wallet version **ACTIVE** puede asignar direcciones nuevas. Las wallet versions históricas/retiradas permanecen **monitoreadas** por invoices previamente emitidos y posibles pagos tardíos. La política de negocio de Late Payment permanece en [ARCH-006](./ADR.md#arch-006--late-payment-policy).
+Solo la wallet version **ACTIVE** puede asignar direcciones nuevas. Las wallet versions históricas/retiradas permanecen **monitoreadas** por invoices previamente emitidos y posibles pagos tardíos. La política de negocio de Late Payment se define en [ARCH-006](./ARCH-006-late-payments-reconciliation.md) (diseño aprobado, D1–D12): este monitoring por wallet version es precisamente lo que **habilita** la detección de Late Payments a versiones RETIRED (ARCH-006 D12). **Index reconciliation** (este documento, seguridad de asignación / never-reuse) y **payment reconciliation** (ARCH-006, qué ocurrió con los BTC recibidos) son concerns separados y no deben conflarse.
 
 ### D6 — Recovery State Machine
 

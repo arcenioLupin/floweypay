@@ -33,6 +33,7 @@ Para cada nuevo invoice, FloweyPay:
 - El fiat se convierte a sats bajo un **rate lock** al crear el invoice; `btc_expires_at = now + rateLockMinutes` (por defecto 15).
 - Se previenen invoices activos duplicados para el mismo link+ventana mediante serialización con advisory lock.
 - La expiración se aplica de dos formas (defensa en profundidad): el Worker persiste `EXPIRED` para invoices vencidos en `AWAITING_PAYMENT`, y el endpoint de lectura computa un estado efectivo pasada la expiración.
+- Como la dirección derivada sigue siendo válida en la red tras la expiración, un pago puede llegar a un invoice ya `EXPIRED`. El invoice **permanece `EXPIRED`** (inmutable) y ese pago tardío se detecta y concilia por separado según [ARCH-006](./ARCH-006-late-payments-reconciliation.md) (diseño aprobado; implementación pendiente).
 
 ## 4.5 Generación de QR y página pública de pago
 

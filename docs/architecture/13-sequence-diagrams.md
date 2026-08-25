@@ -154,6 +154,37 @@ sequenceDiagram
 
 Referencia: [ARCH-005 — Index Reconciliation & Backup Recovery](./ARCH-005-index-reconciliation-recovery.md), [12 — Flujo operativo § 12.4](./12-operational-flow.md#124-ciclo-de-vida-de-recuperación-backup-reconciliation--arch-005).
 
+## 13.8 Late Payment y conciliación (ARCH-006 — diseño aprobado)
+
+> Diseño **aprobado** (D1–D12); implementación **pendiente**. Detalle en [ARCH-006](./ARCH-006-late-payments-reconciliation.md).
+
+```mermaid
+sequenceDiagram
+    actor Cu as Cliente
+    participant N as Red Bitcoin
+    participant Wk as FloweyPay Worker
+    participant DB as Almacén público
+    participant M as Comercio
+    Note over Cu,DB: Invoice ya EXPIRED (permanece EXPIRED)
+    Cu->>N: Difundir BTC a la dirección del invoice expirado
+    N-->>Wk: ZMQ rawtx (first-seen)
+    Wk->>Wk: Clasificar timing por first-seen vs expires_at
+    alt first-seen confiable y posterior a expires_at
+        Wk->>DB: Registrar Late Payment (timing=LATE, amount, wallet version)
+    else first-seen no confiable (offline/recovery/rescan)
+        Wk->>DB: Registrar timing=INDETERMINATE
+    end
+    Wk->>DB: reconciliation = REVIEW_REQUIRED
+    Wk-->>M: LATE_PAYMENT_DETECTED (idempotente)
+    N-->>Wk: ZMQ rawblock (confirmación)
+    Wk->>DB: Actualizar confirmaciones (invoice sigue EXPIRED)
+    Wk-->>M: LATE_PAYMENT_CONFIRMED (idempotente)
+    M->>DB: Conciliar (ACCEPT / DISMISS / NOTE / RECORD EXTERNAL REFUND)
+    Note over M,DB: Auditable; agrega historial; nunca reescribe el invoice
+```
+
+Referencia: [ARCH-006 — Late Payments & Reconciliation](./ARCH-006-late-payments-reconciliation.md), [07 — Dashboard del comercio § 7.5](./07-merchant-dashboard.md).
+
 ---
 
 **Siguiente:** [14 — Decisiones de arquitectura](./14-architecture-decisions.md)

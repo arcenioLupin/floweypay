@@ -11,7 +11,7 @@ Este documento indexa todas las decisiones de arquitectura de FloweyPay. Cada AD
 | [ARCH-003](#arch-003--supported-wallets--recovery-strategy) | Supported Wallets & Recovery Strategy | Aprobado |
 | [ARCH-004](#arch-004--functional-architecture-specification) | Functional Architecture Specification | Aprobado |
 | [ARCH-005](#arch-005--index-reconciliation--backup-recovery) | Index Reconciliation & Backup Recovery | Aprobado (diseño); implementación pendiente |
-| [ARCH-006](#arch-006--late-payment-policy) | Late Payment Policy | Planificado |
+| [ARCH-006](#arch-006--late-payment-policy) | Late Payment Policy | Aprobado (diseño); implementación pendiente |
 
 ---
 
@@ -28,7 +28,7 @@ Este documento indexa todas las decisiones de arquitectura de FloweyPay. Cada AD
   - **Bitcoin Core** valida los descriptors.
 - **Documentación relacionada:** [01-executive-summary.md](./01-executive-summary.md), [03-merchant-onboarding.md](./03-merchant-onboarding.md), [14-architecture-decisions.md](./14-architecture-decisions.md).
 - **Dependencias:** ninguna (decisión fundacional). Requiere un nodo Bitcoin Core operativo.
-- **Consideraciones futuras:** ampliación de script types (Taproot) en [ARCH-006](#arch-006--late-payment-policy) y [15-future-roadmap.md](./15-future-roadmap.md).
+- **Consideraciones futuras:** ampliación de script types (Taproot) como extensión de protocolo planificada en [15-future-roadmap.md](./15-future-roadmap.md).
 
 ---
 
@@ -110,11 +110,22 @@ Este documento indexa todas las decisiones de arquitectura de FloweyPay. Cada AD
 
 ## ARCH-006 — Late Payment Policy
 
-- **Título:** Política de Late Payment (y extensiones de protocolo).
-- **Estado:** **Planificado**.
-- **Resumen:**
-  - Define el tratamiento contable de fondos que llegan **después** de `EXPIRED` (acreditar / reembolsar / revisión manual).
-  - Agrupa extensiones planificadas: Taproot (P2TR / BIP86), Multisig, Lightning y comercios multi-wallet.
-- **Documentación relacionada:** [09-wallet-rotation.md](./09-wallet-rotation.md), [15-future-roadmap.md](./15-future-roadmap.md).
-- **Dependencias:** ARCH-002, ARCH-003.
-- **Consideraciones futuras:** requiere definición de producto antes de convertirse en decisión aprobada.
+- **Título:** Política funcional de Late Payments y conciliación.
+- **Estado:** **Aprobado (diseño); implementación pendiente**.
+- **Resumen:** FloweyPay **registra objetivamente lo que ocurrió en Bitcoin**, **preserva lo que ocurrió con el invoice** y **deja la interpretación comercial al comercio**. Al ser non-custodial, no puede rechazar, revertir, reembolsar ni mover un pago on-chain, ni decidir por sí mismo que un Late Payment satisface el invoice. Decisiones aprobadas **D1–D12**:
+  - **D1** Separar Invoice lifecycle y Bitcoin Payment lifecycle; nunca modelar un Late Payment como `EXPIRED → PAID`.
+  - **D2** `ON_TIME` vs `LATE` se decide por el **first-seen** más temprano confiable vs `expires_at`; nunca por block timestamp, confirmación ni tiempo de recovery.
+  - **D3** Si el first-seen no es confiable (offline/recovery/rescan), timing = `INDETERMINATE` → revisión; recovery observation-neutral.
+  - **D4** Late Payment exacto: el invoice permanece `EXPIRED`; se registra `timing = LATE`, `amount = EXACT`, `reconciliation = REVIEW_REQUIRED`.
+  - **D5** Sin aceptación comercial automática; `EXACT` no implica `ACCEPTED`; requiere conciliación del comercio.
+  - **D6** N transacciones por invoice; acumular recibido; preservar el conjunto de txs.
+  - **D7** Horizonte de detección = tiempo de monitoring de la wallet version (ARCH-005); ACTIVE y RETIRED monitoreadas; sin decommission por tiempo en MVP.
+  - **D8** El Payment Link expirado deja de ser pagable (sin QR/acción de pago); dirección read-only.
+  - **D9** Sin reembolsos on-chain; a lo sumo registro (record-only) de un reembolso externo.
+  - **D10** Notificaciones idempotentes y mínimas: `LATE_PAYMENT_DETECTED`, `LATE_PAYMENT_CONFIRMED`.
+  - **D11** Reorg vs conciliación: revertir estado on-chain sin borrar la decisión comercial histórica.
+  - **D12** Atribución de cada Late Payment a invoice original + dirección derivada + wallet version.
+- **Documento dedicado:** [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md).
+- **Documentación relacionada:** [05-customer-payment-flow.md](./05-customer-payment-flow.md), [06-bitcoin-processing.md](./06-bitcoin-processing.md), [07-merchant-dashboard.md](./07-merchant-dashboard.md), [09-wallet-rotation.md](./09-wallet-rotation.md), [15-future-roadmap.md](./15-future-roadmap.md).
+- **Dependencias:** ARCH-002 (derivación por invoice), ARCH-005 (monitoring por wallet version). No debe conflarse **index reconciliation** (ARCH-005, seguridad de asignación) con **payment reconciliation** (ARCH-006, qué ocurrió con los BTC recibidos).
+- **Consideraciones futuras (fuera de MVP):** ejecución/firma de reembolsos on-chain, gestión de disputas, aceptación automática, decommission de wallet versions, deep-reorg. Extensiones de protocolo (Taproot, Multisig, Lightning, multi-wallet) permanecen **planificadas** en [15-future-roadmap.md](./15-future-roadmap.md).

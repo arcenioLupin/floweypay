@@ -16,7 +16,7 @@ El **Descriptor viejo continúa siendo monitoreado** (ARCH-002). Bitcoin Core si
 
 ## 9.3 Pagos entrantes tardíos (Late incoming payments)
 
-Si un cliente paga tarde un invoice viejo/expirado, el pago a la dirección vieja igualmente se detecta y concilia. El historial de rotación del Recovery Package permite reconstruir el conjunto de monitoring completo.
+Si un cliente paga tarde un invoice viejo/expirado, el pago a la dirección vieja igualmente se detecta y concilia. El historial de rotación del Recovery Package permite reconstruir el conjunto de monitoring completo. Bajo [ARCH-006 D12](./ARCH-006-late-payments-reconciliation.md#d12--wallet-version-attribution), ese Late Payment se atribuye al **invoice original**, a su **dirección derivada** y a la **wallet version** desde la que se derivó (aunque esté **RETIRED**); la rotación **no** cambia la clasificación de timing ni de amount.
 
 ## 9.4 Migración
 
@@ -28,7 +28,7 @@ El dominio de reconciliación es la **wallet version**, no el comercio globalmen
 
 > **Estado:** diseño aprobado; implementación pendiente.
 
-> **Observación (política diferida).** El tratamiento contable de un *pago tardío a un invoice EXPIRED* (acreditar / reembolsar / revisión manual) se define en [ARCH-006](./ADR.md#arch-006--late-payment-policy), no en ARCH-004 ni ARCH-005.
+> **Observación (política aprobada).** El tratamiento de un *pago tardío a un invoice EXPIRED* (detección, clasificación de timing/amount y conciliación del comercio) se define en [ARCH-006](./ARCH-006-late-payments-reconciliation.md) — **diseño aprobado (D1–D12); implementación pendiente** —, no en ARCH-004 ni ARCH-005. La **payment reconciliation** de ARCH-006 no debe conflarse con la **index reconciliation** de ARCH-005 (§ 9.5).
 
 Diagrama de secuencia: ver [13 — Diagramas de secuencia § Wallet Rotation](./13-sequence-diagrams.md#136-wallet-rotation).
 

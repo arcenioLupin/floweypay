@@ -33,6 +33,8 @@ stateDiagram-v2
     Sent --> [*]
 ```
 
+> **ARCH-006 (diseño aprobado).** El target añade eventos de Late Payment idempotentes (`LATE_PAYMENT_DETECTED`, `LATE_PAYMENT_CONFIRMED`) por el mismo pipeline, intencionalmente mínimos ([ARCH-006 D10](./ARCH-006-late-payments-reconciliation.md#d10--late-payment-notifications)). Su implementación permanece pendiente.
+
 ## 12.4 Ciclo de vida de recuperación (Backup reconciliation — ARCH-005)
 
 > Diseño **aprobado** en [ARCH-005](./ARCH-005-index-reconciliation-recovery.md) (D1–D10); **implementación pendiente**. Reemplaza el modelo preliminar de ARCH-002.11.

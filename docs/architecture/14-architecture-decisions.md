@@ -72,4 +72,27 @@ La fórmula preliminar `next_index = max(DB, registros de pago, índice fondeado
 
 ---
 
+## ARCH-006 — Late Payments & Reconciliation
+
+> **Estado del diseño: Aprobado** (D1–D12). **Implementación: pendiente.** Documento dedicado: [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md).
+
+Principio: FloweyPay **registra objetivamente lo que ocurrió en Bitcoin**, **preserva lo que ocurrió con el invoice** y **deja la interpretación comercial al comercio**. Non-custodial: no rechaza, revierte, reembolsa ni mueve un pago on-chain.
+
+| Decisión | Por qué existe |
+|---|---|
+| **D1 — Separar Invoice y Payment lifecycles** | Un Late Payment no se modela como `EXPIRED → PAID`; mutarlo destruiría el historial (expiración real, rate lock vencido, ausencia de decisión comercial). |
+| **D2 — Payment arrival time** | `ON_TIME` vs `LATE` por el **first-seen** más temprano confiable vs `expires_at`; nunca por block timestamp/confirmación/recovery. |
+| **D3 — Indeterminate timing** | first-seen no confiable (offline/recovery/rescan) ⇒ `INDETERMINATE` → revisión; recovery observation-neutral. |
+| **D4 — Exact late payment** | Invoice permanece `EXPIRED`; se registra `timing=LATE, amount=EXACT, reconciliation=REVIEW_REQUIRED`. |
+| **D5 — No automatic commercial acceptance** | `EXACT` no implica `ACCEPTED`; el comercio concilia. |
+| **D6 — Multiple transactions per invoice** | N txs por invoice; acumular recibido; preservar el conjunto de txs. |
+| **D7 — Monitoring horizon** | Detectabilidad = tiempo de monitoring de la wallet version (ARCH-005); ACTIVE y RETIRED monitoreadas; sin decommission por tiempo en MVP. |
+| **D8 — Expired link not payable** | Link expirado sin QR/acción de pago; dirección read-only; no incentivar pagos tardíos. |
+| **D9 — Refunds in MVP** | Sin reembolsos on-chain; a lo sumo registro (record-only) de un reembolso externo. |
+| **D10 — Late Payment notifications** | Idempotentes y mínimas: `LATE_PAYMENT_DETECTED`, `LATE_PAYMENT_CONFIRMED`; sin spam por tx. |
+| **D11 — Reorg vs reconciliation** | Revertir estado on-chain sin borrar la decisión comercial histórica; devolver a revisión. |
+| **D12 — Wallet version attribution** | Cada Late Payment atribuible a invoice original + dirección derivada + wallet version; rotación no cambia timing/amount. |
+
+---
+
 **Siguiente:** [15 — Roadmap futuro](./15-future-roadmap.md)

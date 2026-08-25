@@ -33,6 +33,13 @@ Terminología de Bitcoin e ingeniería usada en esta documentación. Los términ
 - **Safety Range Burning** — quema opcional y **configurable** de un rango adicional de índices tras una recuperación; defensa en profundidad que no reemplaza al HWM (ARCH-005 D3).
 - **Lookahead** — margen configurable por el cual el rango monitoreado debe exceder el cursor de asignación: `monitored_range_end ≥ safe_next_index + lookahead` (ARCH-005 D7).
 - **Index reconciliation** — proceso de probar el `safe_next_index` por wallet version tras una restauración o inconsistencia, apoyándose en el Durable HWM y no solo en el estado on-chain (ARCH-005).
+- **Late Payment (pago tardío)** — transacción Bitcoin válida que acredita la dirección de un invoice cuyo tiempo de llegada de negocio cae **después** de `expires_at` (ARCH-006).
+- **Payment reconciliation (conciliación de pago)** — representación de qué ocurrió con los BTC recibidos contra un invoice (timing, amount, respuesta comercial del comercio). Distinta de la **index reconciliation** de ARCH-005 (ARCH-006).
+- **first-seen** — evidencia más temprana y confiable, desde el nodo de FloweyPay, de que la red vio una transacción; es el reloj de negocio para clasificar `ON_TIME` vs `LATE` (ARCH-006 D2).
+- **Timing classification** — clasificación ortogonal del momento de llegada de un pago: `ON_TIME | LATE | INDETERMINATE` (ARCH-006 D2/D3).
+- **Amount classification** — clasificación ortogonal del monto recibido vs esperado: `UNDERPAID | EXACT | OVERPAID`; el `expected_amount` es inmutable (ARCH-006).
+- **INDETERMINATE (timing)** — estado de timing cuando el first-seen no es confiable (offline/recovery/rescan); requiere revisión del comercio y nunca se marca automáticamente como `LATE`/`ON_TIME` (ARCH-006 D3).
+- **Merchant reconciliation actions** — acciones auditables del comercio sobre un Late Payment: `ACCEPT / DISMISS / ADD NOTE / RECORD EXTERNAL REFUND`. `EXACT` no implica `ACCEPTED` (ARCH-006 D5/D9).
 
 ---
 

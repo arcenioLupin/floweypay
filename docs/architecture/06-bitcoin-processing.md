@@ -34,6 +34,12 @@ stateDiagram-v2
 
 Enum fuente de verdad (`payment_status`): `PENDING, AWAITING_PAYMENT, SEEN_IN_MEMPOOL, CONFIRMING, CONFIRMED, EXPIRED`. Solo `AWAITING_PAYMENT` es expirado por el Worker; los pagos ya vistos (*seen*) no se expiran.
 
+## 6.5 Pagos tardíos a invoices expirados (ARCH-006 — diseño aprobado)
+
+Como la dirección derivada sigue siendo válida en la red después de la expiración, un cliente puede enviar BTC a un invoice ya `EXPIRED`. Ese pago debe **detectarse y registrarse**, no descartarse. El **timing** (`ON_TIME | LATE | INDETERMINATE`) se decide por la evidencia de **first-seen** más temprana y confiable del nodo comparada contra `expires_at`, **no** por el block timestamp ni por la confirmación ([ARCH-006 D2/D3](./ARCH-006-late-payments-reconciliation.md#d2--payment-arrival-time)). El invoice **permanece `EXPIRED`** (su historial es inmutable); el Late Payment se representa por separado con clasificación de timing/amount y conciliación del comercio. Ver [ARCH-006](./ARCH-006-late-payments-reconciliation.md).
+
+> **Observación (implementación actual).** Hoy el matching del Worker (`apps/worker/src/handlers/rawtxHandler.ts`) **descarta** transacciones cuyo invoice ya está `EXPIRED` (solo matchea `AWAITING_PAYMENT` no expirado, o `SEEN_IN_MEMPOOL` / `CONFIRMING`). Detectar y registrar Late Payments es trabajo de implementación de ARCH-006; esta documentación describe el target aprobado.
+
 Diagrama de secuencia: ver [13 — Diagramas de secuencia § Procesamiento del Worker](./13-sequence-diagrams.md#134-procesamiento-del-worker).
 
 ---

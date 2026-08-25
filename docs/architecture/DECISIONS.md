@@ -67,6 +67,17 @@ Este documento permite que un desarrollador nuevo entienda la arquitectura de Fl
 - **Fail-closed**: sin `safe_next_index` probado, se bloquea la asignación. Reconciliación **por wallet version** con una **Recovery State Machine** idempotente.
 - Ver [ARCH-005-index-reconciliation-recovery.md](./ARCH-005-index-reconciliation-recovery.md).
 
+## Late Payments y conciliación (ARCH-006 — diseño aprobado)
+
+- Diseño **aprobado** (D1–D12); implementación **pendiente**.
+- Principio: FloweyPay **registra lo que ocurrió en Bitcoin**, **preserva lo que ocurrió con el invoice** y **deja la interpretación comercial al comercio**. Non-custodial: no rechaza, revierte, reembolsa ni mueve fondos.
+- **Separación de dominios**: Invoice lifecycle, Bitcoin payment/on-chain lifecycle, clasificación de timing/amount y conciliación del comercio son dimensiones **ortogonales**. Un Late Payment **no** se modela como `EXPIRED → PAID`; el invoice permanece `EXPIRED`.
+- **Timing** (`ON_TIME | LATE | INDETERMINATE`) se decide por el **first-seen** más temprano confiable vs `expires_at`, nunca por block timestamp/confirmación/recovery. **Amount** (`UNDERPAID | EXACT | OVERPAID`) es independiente del timing; `expected_amount` inmutable.
+- **Sin aceptación automática**: `EXACT` no implica `ACCEPTED`; el comercio concilia (ACCEPT / DISMISS / ADD NOTE / RECORD EXTERNAL REFUND), con auditoría (acción/actor/timestamp).
+- **N transacciones por invoice**; el Payment Link expirado deja de ser pagable; notificaciones idempotentes (`LATE_PAYMENT_DETECTED`, `LATE_PAYMENT_CONFIRMED`); atribución por wallet version; reorg no borra la decisión comercial.
+- Depende del monitoring por wallet version de ARCH-005; **no** confundir index reconciliation (ARCH-005) con payment reconciliation (ARCH-006).
+- Ver [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md).
+
 ## Soporte de wallets
 
 - Verificación **obligatoria de Address #0** antes de activar cualquier wallet.
@@ -84,7 +95,7 @@ Este documento permite que un desarrollador nuevo entienda la arquitectura de Fl
 ## Roadmap futuro
 
 - **ARCH-005 (diseño aprobado; implementación pendiente):** reconciliación de índices y Backup Recovery (Durable HWM, Allocation Ledger, fail-closed, Recovery State Machine).
-- **ARCH-006 (Planificado):** política de Late Payment; Taproot, Multisig, Lightning, comercios multi-wallet.
+- **ARCH-006 (diseño aprobado; implementación pendiente):** política de Late Payments y conciliación (separación de dominios, timing/amount, conciliación del comercio, link expirado no pagable). Extensiones de protocolo (Taproot, Multisig, Lightning, multi-wallet) permanecen **planificadas**.
 - Ver [15-future-roadmap.md](./15-future-roadmap.md).
 
 ---

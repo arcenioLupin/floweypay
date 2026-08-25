@@ -32,6 +32,24 @@ Documentación asociada: [ARCH-005-index-reconciliation-recovery.md](./ARCH-005-
 
 ---
 
+## Versión 1.3 — ARCH-006: Late Payments & Reconciliation (Diseño aprobado)
+
+Estado: **Aprobado (diseño); implementación pendiente**.
+
+Adición arquitectónica (solo diseño; **no** representa implementación completada):
+
+- **ARCH-006** — Late Payments & Reconciliation. Aprobadas las decisiones **D1–D12**. Principio central: FloweyPay **registra objetivamente lo que ocurrió en Bitcoin**, **preserva lo que ocurrió con el invoice** y **deja la interpretación comercial al comercio**; al ser non-custodial no puede rechazar, revertir, reembolsar ni mover un pago on-chain.
+  - **Separación de ciclos de vida**: Invoice lifecycle, Bitcoin payment/on-chain lifecycle, clasificación de timing/amount y conciliación del comercio son dimensiones ortogonales; un Late Payment **no** se modela como `EXPIRED → PAID` (el invoice permanece `EXPIRED`).
+  - **Clasificación**: timing (`ON_TIME | LATE | INDETERMINATE`) por first-seen confiable vs `expires_at`; amount (`UNDERPAID | EXACT | OVERPAID`) independiente; `expected_amount` inmutable; N transacciones por invoice.
+  - **Conciliación del comercio**: `EXACT` no implica `ACCEPTED`; acciones auditables (ACCEPT / DISMISS / ADD NOTE / RECORD EXTERNAL REFUND); sin reembolsos on-chain.
+  - **Comportamiento del link expirado**: deja de ser pagable (sin QR/acción de pago); dirección read-only.
+  - **Relación con wallet-version monitoring**: detección de Late Payments a versiones RETIRED depende del monitoring por wallet version de ARCH-005; no confundir index reconciliation con payment reconciliation.
+- La **implementación** (detección de late payments, columnas/estados, cola de conciliación, eventos de notificación, ocultar QR expirado) **permanece pendiente**.
+
+Documentación asociada: [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md), [ADR.md § ARCH-006](./ADR.md#arch-006--late-payment-policy), [05-customer-payment-flow.md](./05-customer-payment-flow.md), [06-bitcoin-processing.md](./06-bitcoin-processing.md), [07-merchant-dashboard.md](./07-merchant-dashboard.md), [09-wallet-rotation.md](./09-wallet-rotation.md), [15-future-roadmap.md](./15-future-roadmap.md).
+
+---
+
 ## Versión 1.1 — Mejoras planificadas (Placeholder)
 
 Estado: **Planificado**.
