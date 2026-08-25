@@ -64,6 +64,20 @@ Documentación asociada: [DB-001-merchant-wallet-wallet-versions.md](./DB-001-me
 
 ---
 
+## Versión 1.5 — DB-002: Allocation Ledger (Diseño aprobado)
+
+Estado: **Aprobado (diseño); implementación pendiente**.
+
+Adición de diseño de persistencia (solo diseño; **no** representa implementación completada). Construye sobre ARCH-001…006 y DB-001 sin rediseñarlas:
+
+- **DB-002** — Allocation Ledger y relación `invoice ↔ wallet_version ↔ derivation_index`. Aprobadas las decisiones **D1–D17**: entidad conceptual `WalletAddressAllocation` como **consumo irrevocable** de índice de derivación por wallet version + dirección derivada + atribución al invoice (**no** es un registro de transacción Bitcoin); sin máquina de estados de reserva — toda fila committeada es terminal `ATTRIBUTED` **XOR** `BURNED` (`CHECK` XOR), con `BURNED` (`payment_id NULL` + `burn_reason`) materializado **solo** por reconciliación; `0 <= derivation_index < 2^31`; `UNIQUE(wallet_version_id, derivation_index)` (never-reuse) + `UNIQUE(btc_address)` + `UNIQUE(payment_id)`; `Allocation.btc_address` **autoritativa** para non-custodial con `Payment.btc_address` retenida transitoriamente (legacy/denormalizada, **no** eliminada); **Durable HWM** (INFRA-001) con consumo atómico monotónico que avanza **antes** del commit PostgreSQL y de la visibilidad de la dirección → índice consumido-pero-no-committeado **quemado** y nunca reutilizado; **no** `MAX(ledger)+1` como autoridad (`ledger_max` solo observabilidad; `candidate = previous_HWM+1` normal o `safe_next_index` en recovery; `HWM(V) >= ledger_max(V)`; discrepancia ⇒ fail-closed); discriminador inmutable `Payment.receiving_model` (`SHARED_CUSTODIAL` / `NON_CUSTODIAL_DERIVED`) sin wallet versions sintéticas (preserva DB-001 D14); append-only (expiración/cancelación/fallo/rotación nunca liberan un índice); identidad de Allocation inmutable (`BURNED` nunca se vuelve `ATTRIBUTED`; un `Payment` nunca se mueve entre Allocations); direcciones privacy-sensitive sin `hwm_confirmed_at`.
+- **Explícitamente fuera de DB-002:** `recovery_state` + monitoring/lookahead (**DB-003**), tecnología/durabilidad del Durable HWM (**INFRA-001**), clasificación de Late Payment + conciliación del comercio (**DB-004**), esquema Prisma + enums + constraints + triggers + migraciones (**DB-006**), migración del Worker al matching por `Allocation.btc_address`.
+- La **implementación** (tabla `WalletAddressAllocation`, `receiving_model`, constraints PostgreSQL, triggers de inmutabilidad, Durable HWM atómico, migraciones) **permanece pendiente**. Hoy el repositorio aún deriva direcciones desde una **única wallet compartida** de Bitcoin Core (`getnewaddress`) y no contiene Allocation Ledger, atribución `wallet_version ↔ derivation_index`, Durable HWM ni `receiving_model`.
+
+Documentación asociada: [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [ADR.md § DB-002](./ADR.md#db-002--allocation-ledger), [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md), [16-glossary.md](./16-glossary.md).
+
+---
+
 ## Versión 1.1 — Mejoras planificadas (Placeholder)
 
 Estado: **Planificado**.

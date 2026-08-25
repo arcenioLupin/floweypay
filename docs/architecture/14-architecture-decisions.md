@@ -122,4 +122,32 @@ Materializa la persistencia que ARCH-001/002/003/005 presuponen. **No** rediseñ
 
 ---
 
+## DB-002 — Allocation Ledger
+
+> **Estado del diseño: Aprobado** (D1–D17). **Implementación: pendiente** (DB-006; Durable HWM en INFRA-001). Documento dedicado: [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md).
+
+Materializa el **Allocation Ledger** y la relación `invoice ↔ wallet_version ↔ derivation_index` que ARCH-002/005/006 y DB-001 presuponen. **No** rediseña ninguna decisión ARCH ni DB-001. Entidad conceptual: **`WalletAddressAllocation`** (consumo irrevocable de índice + dirección derivada + atribución al invoice). Principio central: un índice durablemente consumido **nunca** se reutiliza — **SAFETY > INDEX DENSITY**.
+
+| Decisión | Por qué existe |
+|---|---|
+| **D1 — Allocation semantics** | Consumo **irrevocable** de índice por wallet version; en el path exitoso la atribución al `Payment` se escribe **atómicamente** con la Allocation; consumido por el HWM, el índice nunca se reutiliza aunque la transacción PG falle. |
+| **D2 — Entity name** | `WalletAddressAllocation` = wallet version + índice + dirección derivada + atribución; **no** es un registro de transacción Bitcoin; una dirección recibe 0..N transacciones. |
+| **D3 — Allocation sin Payment** | El path normal nunca deja una Allocation committeada sin `Payment`; la reconciliación **puede** materializar un **BURN record** permanente (`payment_id = NULL` + `burn_reason`). |
+| **D4 — Terminal outcome model** | Sin máquina de reserva; fila terminal **`ATTRIBUTED`** (`payment_id NOT NULL`, `burn_reason NULL`) **XOR** **`BURNED`** (`payment_id NULL`, `burn_reason NOT NULL`); `CHECK` XOR. |
+| **D5 — Derivation index type/range** | `derivation_index` BigInt conceptual; `0 <= i < 2^31` (receive chain BIP84); tipo físico final en DB-006. |
+| **D6 — Never-reuse constraint** | `UNIQUE(wallet_version_id, derivation_index)`; el mismo índice es válido en versiones distintas (namespaces independientes). |
+| **D7 — BTC address persistence** | Persistir `btc_address` derivada de `descriptor` + índice; **autoritativa** para non-custodial; re-derivable para verificación/recovery. |
+| **D8 — BTC address uniqueness** | `UNIQUE(btc_address)`; validación de compatibilidad con network/Descriptor de la wallet version. |
+| **D9 — `Payment.btc_address` transition** | Retener para legacy/compatibilidad/migración; non-custodial → `Allocation.btc_address` autoritativa; a lo sumo copia denormalizada, **no** segunda fuente de verdad; **no** se elimina en DB-002. |
+| **D10 — Durable HWM ordering** | El **Durable HWM** provee consumo **atómico monotónico** por wallet version (fetch-and-increment/CAS); avanza **antes** del commit PG y de la visibilidad de la dirección; fallo seguro = índice quemado/saltado; la tecnología es de INFRA-001. |
+| **D11 — Candidate index / HWM dominance** | **No** `MAX(ledger.index)+1`; `ledger_max(V)` es solo observabilidad (−1 si vacío); `HWM(V)` autoritativo; `candidate = previous_HWM+1` (normal) o `safe_next_index` (recovery); `candidate` nunca `<= HWM`; `HWM(V) >= ledger_max(V)`; ledger por delante del HWM ⇒ **fail-closed**; PG **no** es prueba autoritativa del HWM. |
+| **D12 — Concurrency** | Unicidad concurrente desde el consumo atómico del HWM; `UNIQUE(V,index)` como defensa en profundidad (violación = bug, nunca reuso); advisory lock opcional para contención. |
+| **D13 — Deletion policy** | Append-only; nunca se borra por expiración/cancelación/fallo/link expirado/sin BTC/`RETIRED`; el ciclo de vida del invoice nunca libera un índice; un BURN es permanente. |
+| **D14 — Legacy discriminator** | `Payment.receiving_model` inmutable (`SHARED_CUSTODIAL` / `NON_CUSTODIAL_DERIVED`); legacy = `SHARED_CUSTODIAL` + sin Allocation (válido); `NON_CUSTODIAL_DERIVED` + Allocation faltante = inválido; sin wallet versions sintéticas (preserva DB-001 D14); semántica DB-002, columna física DB-006. |
+| **D15 — Ledger vs event log** | Allocation Ledger = una fila terminal/inmutable por índice consumido; **no** event-sourced; la reconciliación puede añadir una fila BURN permanente. |
+| **D16 — Immutability enforcement** | Identidad inmutable (`wallet_version_id`, `derivation_index`, `btc_address`, `network`); `payment_id`/`burn_reason` inmutables tras el INSERT; `BURNED` nunca se vuelve `ATTRIBUTED`; un `Payment` nunca se mueve entre Allocations; enforcement DB-level en DB-006. |
+| **D17 — Privacy / security** | Direcciones públicas pero privacy-sensitive: privilegio mínimo, backups cifrados, evitar logging/telemetría, restringir exposición masiva, redacción de diagnósticos; sin cifrado de columna requerido; **no** persistir `hwm_confirmed_at`. |
+
+---
+
 **Siguiente:** [15 — Roadmap futuro](./15-future-roadmap.md)

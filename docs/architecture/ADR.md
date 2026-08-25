@@ -20,6 +20,7 @@ Estas tareas **construyen sobre** las decisiones ARCH aprobadas y las materializ
 | Tarea | Título | Estado |
 |---|---|---|
 | [DB-001](#db-001--merchant-wallet--wallet-versions) | Merchant Wallet + Wallet Versions | Aprobado (diseño); implementación pendiente |
+| [DB-002](#db-002--allocation-ledger) | Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`) | Aprobado (diseño); implementación pendiente |
 
 ---
 
@@ -155,3 +156,27 @@ Estas tareas **construyen sobre** las decisiones ARCH aprobadas y las materializ
 - **Documentación relacionada:** [03-merchant-onboarding.md](./03-merchant-onboarding.md), [08-wallet-recovery.md](./08-wallet-recovery.md), [09-wallet-rotation.md](./09-wallet-rotation.md), [11-security-model.md](./11-security-model.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md).
 - **Dependencias:** ARCH-001 (Descriptor como fuente de verdad), ARCH-002 (metadata de wallet, rotación), ARCH-003 (Recovery Package), ARCH-005 D5/D10 (wallet version como dominio de reconciliación; paso 1 del orden de implementación).
 - **Consideraciones futuras:** DB-002 (Allocation Ledger + relación `invoice ↔ wallet_version ↔ derivation_index`), DB-003 (Recovery State + monitoring), INFRA-001 (Durable HWM), DB-004 (Late Payment + conciliación), DB-006 (esquema Prisma + constraints + migraciones).
+
+---
+
+## DB-002 — Allocation Ledger
+
+- **Título:** Allocation Ledger y relación `invoice ↔ wallet_version ↔ derivation_index`.
+- **Estado del diseño:** **Aprobado** (decisiones D1–D17). **Estado de implementación:** **Pendiente** (pertenece a DB-006; el Durable HWM a INFRA-001).
+- **Prioridad:** P0.
+- **Resumen:**
+  - Entidad conceptual **`WalletAddressAllocation`**: **consumo irrevocable** de un índice de derivación por wallet version + dirección derivada + atribución al invoice; **no** es un registro de transacción Bitcoin (**D1/D2**).
+  - Sin máquina de estados de reserva: toda fila committeada es terminal, **`ATTRIBUTED`** (`payment_id NOT NULL`, `burn_reason NULL`) **XOR** **`BURNED`** (`payment_id NULL`, `burn_reason NOT NULL`, solo por reconciliación) (**D3/D4/D15**).
+  - Índice `0 <= derivation_index < 2^31` (BigInt conceptual) (**D5**); `UNIQUE(wallet_version_id, derivation_index)` como never-reuse fundamental (**D6**); namespaces de índice independientes por wallet version.
+  - `btc_address` derivada y **autoritativa** para el modelo non-custodial (**D7**); `UNIQUE(btc_address)` (**D8**); `Payment.btc_address` retenida transitoriamente (legacy/denormalizada), **no** eliminada en DB-002 (**D9**).
+  - **Durable HWM** (INFRA-001) provee consumo **atómico monotónico** por wallet version; avanza **antes** del commit PostgreSQL y de la visibilidad de la dirección → un índice consumido-pero-no-committeado queda **quemado**, nunca reutilizado (**D10**).
+  - **No** `MAX(ledger)+1` como autoridad; `ledger_max` es solo observabilidad; `candidate_index = previous_HWM+1` (normal) o `safe_next_index` (recovery); invariante `HWM(V) >= ledger_max(V)`; `ledger_max > HWM` ⇒ inconsistencia ⇒ fail-closed (**D11**).
+  - Unicidad concurrente desde el HWM atómico; `UNIQUE(V,index)` como defensa en profundidad; advisory lock opcional (**D12**).
+  - Append-only: expiración/cancelación/fallo/rotación nunca liberan un índice (**D13**).
+  - Discriminador inmutable `Payment.receiving_model` (`SHARED_CUSTODIAL` / `NON_CUSTODIAL_DERIVED`); legacy = `SHARED_CUSTODIAL` + sin Allocation; sin wallet versions sintéticas (preserva DB-001 D14) (**D14**).
+  - Identidad de Allocation inmutable; `BURNED` nunca se vuelve `ATTRIBUTED`; un `Payment` nunca se mueve entre Allocations (**D16**).
+  - Direcciones públicas pero privacy-sensitive: privilegio mínimo, backups cifrados, sin logging/exposición masiva; **no** persistir `hwm_confirmed_at` (**D17**).
+- **Documento dedicado:** [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md).
+- **Documentación relacionada:** [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [ARCH-005-index-reconciliation-recovery.md](./ARCH-005-index-reconciliation-recovery.md), [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md), [04-payment-link-creation.md](./04-payment-link-creation.md), [06-bitcoin-processing.md](./06-bitcoin-processing.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md).
+- **Dependencias:** DB-001 (ancla `wallet_version_id`), ARCH-002 (derivación forward-only por invoice), ARCH-005 D1/D2/D4/D5/D10 (Allocation Ledger + Durable HWM + fail-closed + dominio por wallet version + orden de implementación), ARCH-006 D6/D12 (N transacciones por invoice; atribución por wallet version).
+- **Consideraciones futuras:** DB-003 (`recovery_state` + monitoring), INFRA-001 (tecnología del Durable HWM), DB-004 (clasificación de Late Payment + conciliación), DB-006 (esquema Prisma + enums + constraints + triggers + migraciones), migración del Worker al matching por `Allocation.btc_address`.

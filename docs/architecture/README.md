@@ -55,6 +55,7 @@ flowchart LR
 | [ARCH-005-index-reconciliation-recovery.md](./ARCH-005-index-reconciliation-recovery.md) | Decisión ARCH-005 (D1–D10): Index Reconciliation & Backup Recovery. Diseño **aprobado**; implementación pendiente. |
 | [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md) | Decisión ARCH-006 (D1–D12): Late Payments & Reconciliation. Diseño **aprobado**; implementación pendiente. |
 | [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md) | Diseño de persistencia DB-001 (D1–D16): Merchant Wallet + Wallet Versions. Diseño **aprobado**; implementación pendiente (DB-006). |
+| [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md) | Diseño de persistencia DB-002 (D1–D17): Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`). Diseño **aprobado**; implementación pendiente (DB-006 / INFRA-001). |
 
 ### Especificación funcional (ARCH-004)
 
@@ -90,6 +91,7 @@ flowchart LR
 | **ARCH-005** | Reconciliación de índices y Backup Recovery | Aprobado (diseño); implementación pendiente |
 | **ARCH-006** | Late Payments y conciliación | Aprobado (diseño); implementación pendiente |
 | **DB-001** | Merchant Wallet + Wallet Versions (persistencia) | Aprobado (diseño); implementación pendiente |
+| **DB-002** | Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`) | Aprobado (diseño); implementación pendiente |
 
 Ver el detalle completo en [ADR.md](./ADR.md).
 

@@ -103,6 +103,19 @@ Este documento permite que un desarrollador nuevo entienda la arquitectura de Fl
 - **Fuera de DB-001:** Allocation Ledger e índices de derivación (DB-002), `recovery_state` + monitoring (DB-003), Durable HWM (INFRA-001), Late Payment + conciliación (DB-004), esquema/migraciones (DB-006). DB-001 solo provee el `wallet_version_id` estable que esas tareas referencian; **no** reintroduce un `next_index` mutable como autoridad de asignación.
 - Ver [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md).
 
+## Allocation Ledger (DB-002 — diseño aprobado)
+
+- Diseño **aprobado** (D1–D17); implementación **pendiente** (DB-006; Durable HWM en INFRA-001). Materializa la relación `invoice ↔ wallet_version ↔ derivation_index`.
+- Entidad conceptual **`WalletAddressAllocation`**: **consumo irrevocable** de un índice de derivación por **wallet version** + **dirección derivada** + **atribución al invoice**. **No** es un registro de transacción Bitcoin; una Allocation/dirección puede recibir **0..N** transacciones.
+- **Never-reuse fundamental:** un índice **durablemente consumido** por el **Durable HWM** nunca se reasigna; un índice **quemado (BURNED)** es aceptable, un índice **reutilizado** no. **SAFETY > INDEX DENSITY.** La expiración/cancelación/fallo/rollback/restore/rotación **nunca** liberan un índice.
+- **Sin máquina de estados de reserva:** toda fila committeada es terminal — **`ATTRIBUTED`** (`payment_id NOT NULL`, `burn_reason NULL`; escrita atómicamente con el `Payment`) **XOR** **`BURNED`** (`payment_id NULL`, `burn_reason NOT NULL`; **solo** materializada por reconciliación). `CHECK ((payment_id IS NOT NULL) <> (burn_reason IS NOT NULL))`.
+- **Índice:** `0 <= derivation_index < 2^31` (BigInt conceptual); `UNIQUE(wallet_version_id, derivation_index)`; namespaces independientes por wallet version (V1/index 0 y V2/index 0 coexisten).
+- **Dirección:** `WalletAddressAllocation.btc_address` derivada y **autoritativa** para non-custodial; `UNIQUE(btc_address)`; `Payment.btc_address` se retiene como legacy/copia denormalizada y **no** se elimina en DB-002.
+- **Durable HWM (INFRA-001):** consumo **atómico monotónico** por wallet version; avanza **antes** del commit PostgreSQL y de la visibilidad de la dirección. `MAX(ledger)+1` **no** es autoridad; `ledger_max` es solo observabilidad; `candidate_index = previous_HWM+1` (normal) o `safe_next_index` (recovery); `HWM(V) >= ledger_max(V)`; discrepancia ⇒ **fail-closed / RECOVERY_REQUIRED**. PostgreSQL **no** es prueba autoritativa del HWM; **no** se persiste `hwm_confirmed_at`.
+- **Discriminador legacy:** `Payment.receiving_model` inmutable (`SHARED_CUSTODIAL` / `NON_CUSTODIAL_DERIVED`); legacy = `SHARED_CUSTODIAL` + sin Allocation + `Payment.btc_address` (válido); `NON_CUSTODIAL_DERIVED` + Allocation faltante = inválido; sin wallet versions sintéticas (preserva DB-001 D14).
+- **Fuera de DB-002:** `recovery_state` + monitoring/lookahead (DB-003), tecnología/durabilidad del Durable HWM (INFRA-001), clasificación de Late Payment + conciliación del comercio (DB-004), esquema Prisma + enums + constraints + triggers + migraciones (DB-006), migración del Worker al matching por `Allocation.btc_address`.
+- Ver [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md).
+
 ## Roadmap futuro
 
 - **ARCH-005 (diseño aprobado; implementación pendiente):** reconciliación de índices y Backup Recovery (Durable HWM, Allocation Ledger, fail-closed, Recovery State Machine).
