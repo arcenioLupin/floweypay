@@ -178,4 +178,39 @@ Materializa la persistencia operativa que ARCH-005/006 y DB-001/002 presuponen: 
 
 ---
 
+## INFRA-001 — Durable HWM
+
+> **Estado del diseño: Aprobado** (D1–D24, con refinamientos **FINAL** en D2/D4/D7/D10/D11). **Implementación: pendiente** (provisión de la instancia PostgreSQL dedicada, `DurableHwmStore`, tablas, roles, PITR/backups independientes, runbook, tests). **Área:** Infra / Security. **Prioridad:** P0. Documento dedicado: [INFRA-001-durable-hwm.md](./INFRA-001-durable-hwm.md).
+
+Materializa la **infraestructura de durabilidad** del **Durable HWM** que ARCH-005 D2 y DB-002 D10/D11 presuponen: una **marca de agua autoritativa de consumo** de índices de derivación por wallet version, con **ciclo de vida independiente del PostgreSQL operativo**. **No** rediseña ninguna decisión ARCH ni DB; **no** persiste el Allocation Ledger, la Recovery State ni el Descriptor monitoring.
+
+| Decisión | Por qué existe |
+|---|---|
+| **D1 — Tecnología** | **Instancia PostgreSQL dedicada** como primario P0 (transaccional, CAS, durabilidad probada); KV transaccional gestionado como segunda opción/futuro; **Redis no** como autoridad. |
+| **D2 — Dominio de fallo independiente (FINAL)** | Instancia PostgreSQL **dedicada** con **data directory, volumen, timeline WAL/PITR, backups y credenciales** propios; una **segunda base de datos en la instancia operativa es explícitamente insuficiente**; host/región separados = post-MVP hardening; residual de mismo host mitigado con volúmenes/restore/deletion-protection/never-backward/fail-closed. |
+| **D3 — Namespace por wallet version** | `HWM(V)` independiente por `wallet_version_id`; nunca compartido entre versiones. |
+| **D4 — `generation` (FINAL)** | CAS/optimistic concurrency + guard monotónico-forward de `establishBaseline` + metadata de cross-check; **NO** detecta el rollback del propio store del HWM. |
+| **D5 — Valor inicial** | `HWM = -1` inicial; `establishBaseline` **explícito**; primer `consumeNext` devuelve `0`; dominio `-1 <= HWM < 2^31`. |
+| **D6 — Consumo atómico** | `consumeNext(walletVersionId, operationId)` devuelve `previous_HWM + 1` e incrementa el HWM **atómicamente**; monotónico never-reuse. |
+| **D7 — Idempotencia (FINAL)** | `operationId` **obligatorio**; **`UNIQUE(wallet_version_id, operation_id)`**; incremento + INSERT de operación en la **misma transacción**; duplicados concurrentes convergen a **un** índice vía rollback + retry-on-unique-violation; el `SELECT` inicial es solo fast path; READ COMMITTED + row lock + reintento acotado; **sin** lock distribuido. |
+| **D8 — Timeout ambiguo** | Reintento con el mismo `operationId` ⇒ mismo índice; irrecuperable ⇒ `RECOVERY_REQUIRED` + índice quemado (Safety Range Burning). |
+| **D9 — Autoridad única** | El Durable HWM es la **única** autoridad de never-reuse; `MAX(ledger)+1`, `safe_next_index` on-chain o el estado de Bitcoin Core **no** son autoridad de asignación. |
+| **D10 — Durabilidad (FINAL)** | P0 = `synchronous_commit=on` + almacenamiento durable + PITR/backups independientes + deletion protection + never-backward restore + fail-closed; **standby síncrono = post-MVP hardening**, **no** requerido para la corrección de never-reuse. |
+| **D11 — Detección de rollback (FINAL)** | Por **reconciliación contra evidencia aprobada** (Allocation Ledger / on-chain / Recovery Package), preservando `HWM(V) >= ledger_max(V)`; **no** por `generation`; **sin** segunda autoridad oculta. |
+| **D12 — Ordenamiento con PG operativo** | El HWM se incrementa **antes** de derivar/persistir la Allocation; una Allocation nunca precede a su avance de HWM. |
+| **D13 — Restore Caso A** | Restaurar el PostgreSQL **operativo** es rutinario/seguro: el HWM **no** se mueve hacia atrás; `ledger_max` puede quedar rezagada sin comprometer never-reuse. |
+| **D14 — Restore Caso B** | Restaurar el **HWM PostgreSQL** es excepcional/**fail-closed**: baseline **solo forward**, con evidencia; Safety Range Burning quema índices inciertos. |
+| **D15 — Pérdida total del HWM** | Reconstrucción conservadora desde evidencia aprobada (`HWM >= ledger_max` + margen); nunca hacia atrás; fail-closed hasta re-establecer. |
+| **D16 — Corrupción de registro** | Corrupción/ambigüedad detectada ⇒ fail-closed + `RECOVERY_REQUIRED`; nunca continuar con un HWM sospechoso. |
+| **D17 — Seguridad / roles** | Tres roles (consume / reconciliation / recovery-admin), privilegio mínimo, conectividad privada, TLS, cifrado en reposo, audit, deletion protection, alarmas. |
+| **D18 — Aislamiento de entornos** | Un HWM PostgreSQL por entorno (dev/staging/prod); nunca compartido entre entornos. |
+| **D19 — Propiedad de componentes** | Abstracción estrecha `DurableHwmStore` (librería, **no** microservicio); solo el path de creación de pagos avanza el HWM; el Worker es **solo lectura**. |
+| **D20 — Desarrollo local** | Instancia PostgreSQL dedicada también en local (contenedor separado); nunca reutilizar la operativa como HWM. |
+| **D21 — Observabilidad** | Métricas/alarmas sin exponer valores crudos del HWM; latencia de consume, tasa de retry, disponibilidad, lag de reconciliación. |
+| **D22 — Costo operativo** | No hay nueva tecnología de DB, pero sí una **superficie operativa dedicada no despreciable** (no "zero new ops"). |
+| **D23 — Límites de alcance** | Fuera: Allocation Ledger + `derivation_index` (DB-002), Recovery State + monitoring (DB-003), identidad/Descriptor (DB-001), esquema Prisma + migraciones (DB-006), provisión real y motor de reconciliación en runtime. |
+| **D24 — Contrato de tests** | 17 tests de contrato del `DurableHwmStore` (baseline, monotonicidad, idempotencia por `operationId`, unicidad, concurrencia, fail-closed, never-backward), definidos como contrato; implementación pendiente. |
+
+---
+
 **Siguiente:** [15 — Roadmap futuro](./15-future-roadmap.md)

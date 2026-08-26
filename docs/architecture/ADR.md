@@ -23,6 +23,14 @@ Estas tareas **construyen sobre** las decisiones ARCH aprobadas y las materializ
 | [DB-002](#db-002--allocation-ledger) | Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`) | Aprobado (diseño); implementación pendiente |
 | [DB-003](#db-003--recovery-state--descriptor-monitoring) | Recovery State + Descriptor Monitoring metadata | Aprobado (diseño); implementación pendiente |
 
+### Tareas de infraestructura / seguridad
+
+Estas tareas materializan mecanismos de infraestructura que las decisiones ARCH/DB presuponen. **No** rediseñan ninguna decisión ARCH ni DB.
+
+| Tarea | Título | Estado |
+|---|---|---|
+| [INFRA-001](#infra-001--durable-hwm) | Durable HWM (High-Water Mark) | Aprobado (diseño); implementación pendiente |
+
 ---
 
 ## ARCH-001 — Non-Custodial Architecture
@@ -205,3 +213,26 @@ Estas tareas **construyen sobre** las decisiones ARCH aprobadas y las materializ
 - **Documentación relacionada:** [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [ARCH-005-index-reconciliation-recovery.md](./ARCH-005-index-reconciliation-recovery.md), [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md), [08-wallet-recovery.md](./08-wallet-recovery.md), [09-wallet-rotation.md](./09-wallet-rotation.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md).
 - **Dependencias:** DB-001 (ancla `wallet_version_id` + ciclo de vida ACTIVE/RETIRED), DB-002 (allocation gate consumida por el protocolo de asignación), ARCH-005 D4/D5/D6/D7 (fail-closed + dominio por wallet version + Recovery State Machine + invariante de lookahead), ARCH-006 D7/D12 (monitoring de versiones RETIRED para Late Payments), INFRA-001 (lectura del Durable HWM en reconciliación).
 - **Consideraciones futuras:** INFRA-001 (tecnología/durabilidad del Durable HWM), DB-004 (clasificación de Late Payment + conciliación), DB-006 (esquema Prisma + enums + constraints 1:1 + triggers + migraciones), motor de reconciliación/establecimiento en runtime, migración del Worker del matching por dirección exacta al monitoring por rango de Descriptor, `reconciliation_run_id` y tabla de historial de transiciones como observabilidad post-MVP.
+
+---
+
+## INFRA-001 — Durable HWM
+
+- **Título:** Durable HWM (High-Water Mark) — marca de agua autoritativa de consumo de índices de derivación, con ciclo de vida independiente del PostgreSQL operativo.
+- **Estado del diseño:** **Aprobado** (decisiones D1–D24, con refinamientos **FINAL** en D2/D4/D7/D10/D11). **Estado de implementación:** **Pendiente** (provisión de la instancia PostgreSQL dedicada, abstracción `DurableHwmStore`, tablas, roles, PITR/backups independientes, runbook y tests).
+- **Área:** Infra / Security. **Prioridad:** P0.
+- **Resumen:**
+  - **Tecnología (D1):** **instancia PostgreSQL dedicada** como primario P0; KV transaccional gestionado (CAS + idempotencia) como segunda opción/futuro; **Redis no** seleccionado como autoridad.
+  - **Dominio de fallo independiente (D2 FINAL):** instancia PostgreSQL **dedicada** con **data directory, volumen, timeline WAL/PITR, backups y credenciales** propios; una **segunda base de datos en la instancia operativa es explícitamente insuficiente**; host/región separados = post-MVP hardening; residual de mismo host físico mitigado con volúmenes/restore/deletion-protection/never-backward/fail-closed.
+  - **Semántica:** `HWM(V)` monotónico, never-reuse, namespace por wallet version, `-1` inicial (`establishBaseline` explícito) y primer consume `0`; fail-closed cuando no disponible o incierto.
+  - **Consumo atómico (D6/D7 FINAL):** `consumeNext(walletVersionId, operationId)`; `operationId` **obligatorio**; **`UNIQUE(wallet_version_id, operation_id)`**; incremento + INSERT de operación en la **misma transacción**; duplicados concurrentes convergen a un índice vía rollback/retry; READ COMMITTED + row lock + reintento acotado (sin lock distribuido).
+  - **Timeout ambiguo (D8):** reintento con el mismo `operationId` ⇒ mismo índice; irrecuperable ⇒ `RECOVERY_REQUIRED` + índice quemado.
+  - **`generation` (D4 FINAL):** CAS/optimistic concurrency + guard monotónico-forward de `establishBaseline` + metadata de cross-check; **NO** detecta el rollback del propio store del HWM.
+  - **Detección de rollback (D11 FINAL):** por **reconciliación contra evidencia aprobada** (Allocation Ledger / on-chain / Recovery Package), preservando `HWM(V) ≥ ledger_max(V)`; **no** por `generation`; **sin** segunda autoridad oculta.
+  - **Restore:** Caso A (PostgreSQL operativo) rutinario/seguro — el HWM **no** se mueve hacia atrás; Caso B (HWM PostgreSQL) excepcional/fail-closed — baseline solo forward, con evidencia; Safety Range Burning quema índices inciertos.
+  - **Durabilidad (D10 FINAL):** P0 = `synchronous_commit=on` + almacenamiento durable + PITR/backups independientes + deletion protection + never-backward restore + fail-closed; **standby síncrono = post-MVP hardening**, no requerido para la corrección de never-reuse.
+  - **Seguridad (D17):** tres roles (consume / reconciliation / recovery-admin), privilegio mínimo, conectividad privada, TLS, cifrado en reposo, audit, deletion protection, alarmas. **Costo:** no hay nueva tecnología de DB, pero sí una **superficie operativa dedicada no despreciable** (no "zero new ops").
+- **Documento dedicado:** [INFRA-001-durable-hwm.md](./INFRA-001-durable-hwm.md).
+- **Documentación relacionada:** [ARCH-005-index-reconciliation-recovery.md](./ARCH-005-index-reconciliation-recovery.md), [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md), [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md).
+- **Dependencias:** DB-001 (ancla `wallet_version_id`), ARCH-005 D2/D3/D4/D8/D10 (Durable HWM + Safety Range Burning + fail-closed + Recovery Package + orden de implementación), DB-002 D10/D11 (consumo atómico monotónico; `HWM(V) ≥ ledger_max(V)`), DB-003 D7 (`HWM(V)` como boundary de monitoring RETIRED).
+- **Consideraciones futuras:** provisión real de PostgreSQL dedicado + roles + PITR (infra), DB-006 (esquema/migraciones), motor de reconciliación/establecimiento en runtime, adapter de KV transaccional gestionado, standby síncrono / HA, host/región separados, aprobación multi-parte de recovery-admin (post-MVP hardening).

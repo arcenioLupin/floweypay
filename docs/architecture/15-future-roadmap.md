@@ -34,7 +34,7 @@ flowchart TB
     DB001["DB-001 — diseño aprobado<br/>MerchantWallet + MerchantWalletVersion"]
     DB002["DB-002 — Allocation Ledger<br/>invoice ↔ wallet_version ↔ derivation_index"]
     DB003["DB-003 — diseño aprobado<br/>Recovery State + monitoring metadata"]
-    INFRA001["INFRA-001 — Durable HWM<br/>(persistencia independiente)"]
+    INFRA001["INFRA-001 — diseño aprobado<br/>Durable HWM (instancia PostgreSQL dedicada)"]
     DB004["DB-004 — Late Payment + Reconciliation"]
     DB006["DB-006 — migraciones / implementación"]
     DB001 --> DB002 --> DB003 --> INFRA001 --> DB004 --> DB006
@@ -45,6 +45,8 @@ Referencia: [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet
 El **diseño** de **DB-002** (Allocation Ledger; D1–D17) está **aprobado** y ha dejado de ser un elemento planificado; su **implementación** pertenece a DB-006 (y el Durable HWM a INFRA-001). Referencia: [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [ADR.md § DB-002](./ADR.md#db-002--allocation-ledger).
 
 El **diseño** de **DB-003** (Recovery State + Descriptor Monitoring metadata; D1–D17) está **aprobado** (aprobado (diseño); implementación pendiente) y ha dejado de ser un elemento planificado; materializa, por wallet version, la **allocation-safety gate** (`MerchantWalletRecoveryState`) y la **monitoring-coverage claim** (`MerchantWalletDescriptorMonitoring`) que ARCH-005 D6/D7 presuponen. Su **implementación** pertenece a DB-006 (con el Durable HWM en INFRA-001 y el motor de reconciliación/monitoring en el Worker/runtime). Referencia: [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md), [ADR.md § DB-003](./ADR.md#db-003--recovery-state--descriptor-monitoring).
+
+El **diseño** de **INFRA-001** (Durable HWM; D1–D24, con refinamientos **FINAL** en D2/D4/D7/D10/D11) está **aprobado** (aprobado (diseño); implementación pendiente) y ha dejado de ser un elemento planificado; materializa la **infraestructura de durabilidad** del Durable HWM — una **marca de agua autoritativa de consumo** por wallet version sobre una **instancia PostgreSQL dedicada** con ciclo de vida independiente del PostgreSQL operativo — que ARCH-005 D2 y DB-002 D10/D11 presuponen. Su **implementación** (provisión de la instancia PostgreSQL dedicada, `DurableHwmStore`, tablas, roles, PITR/backups independientes, runbook y tests) permanece **pendiente**. Referencia: [INFRA-001-durable-hwm.md](./INFRA-001-durable-hwm.md), [ADR.md § INFRA-001](./ADR.md#infra-001--durable-hwm).
 
 ## Extensiones de protocolo
 

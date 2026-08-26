@@ -93,6 +93,21 @@ Documentación asociada: [DB-003-recovery-state-descriptor-monitoring.md](./DB-0
 
 ---
 
+## Versión 1.7 — INFRA-001: Durable HWM (Diseño aprobado con refinamientos)
+
+Estado: **Aprobado (diseño); implementación pendiente**.
+
+Adición de diseño de infraestructura/seguridad (solo diseño; **no** representa implementación completada). Construye sobre ARCH-001…006, DB-001, DB-002 y DB-003 sin rediseñarlas:
+
+- **INFRA-001** — Durable HWM (High-Water Mark). Aprobadas las decisiones **D1–D24**, con refinamientos **FINAL** en **D2/D4/D7/D10/D11**: **marca de agua autoritativa de consumo** de índices de derivación por wallet version, con **ciclo de vida independiente del PostgreSQL operativo**; **instancia PostgreSQL dedicada** como primario P0 (data directory, volumen, WAL/PITR, backups y credenciales propios) — una **segunda base de datos en la instancia operativa es explícitamente insuficiente**, host/región separados = post-MVP hardening; `HWM(V)` monotónico never-reuse con `-1` inicial (`establishBaseline` explícito) y primer consume `0`; consumo atómico `consumeNext(walletVersionId, operationId)` con `operationId` **obligatorio**, **`UNIQUE(wallet_version_id, operation_id)`** e incremento + INSERT de operación en la **misma transacción** (duplicados concurrentes convergen a un índice vía rollback/retry; READ COMMITTED + row lock + reintento acotado; sin lock distribuido); timeout ambiguo resuelto por idempotencia (mismo `operationId` ⇒ mismo índice); `generation` para **CAS/guard monotónico-forward/cross-check** y **NO** como detector de rollback del propio store; **detección de rollback** del HWM vía reconciliación contra evidencia aprobada (Allocation Ledger / on-chain / Recovery Package, `HWM(V) >= ledger_max(V)`); restore del PostgreSQL operativo (Caso A) rutinario/seguro y restore del HWM (Caso B) excepcional/**fail-closed** con baseline solo forward + Safety Range Burning; durabilidad P0 = `synchronous_commit=on` + almacenamiento durable + PITR/backups independientes + deletion protection + never-backward restore + fail-closed, con **standby síncrono como post-MVP hardening** (no requerido para la corrección de never-reuse); tres roles (consume / reconciliation / recovery-admin) con privilegio mínimo; abstracción estrecha `DurableHwmStore` (librería, **no** microservicio); solo el path de creación de pagos avanza el HWM (Worker solo lectura); aislamiento por entorno; observabilidad sin valores crudos del HWM.
+- **Redacción corregida:** el PostgreSQL dedicado **no** es "zero new ops" — no hay nueva tecnología de DB pero sí una **superficie operativa dedicada no despreciable**.
+- **Explícitamente fuera de INFRA-001:** Allocation Ledger + `derivation_index` (**DB-002**), Recovery State + monitoring (**DB-003**), identidad/Descriptor de wallet (**DB-001**), esquema Prisma + enums + constraints + migraciones (**DB-006**), provisión real de PostgreSQL, motor de reconciliación/establecimiento en runtime y llamadas de Bitcoin Core.
+- La **implementación** (provisión de la instancia PostgreSQL dedicada, `DurableHwmStore`, tablas `durable_hwm`/`hwm_consume_ops`, roles, PITR/backups independientes, runbook de recovery, tests) **permanece pendiente**. Hoy el repositorio aún deriva direcciones desde una **única wallet compartida** de Bitcoin Core (`getnewaddress`), usa una **única** instancia PostgreSQL operativa y **no** contiene ningún mecanismo de Durable HWM.
+
+Documentación asociada: [INFRA-001-durable-hwm.md](./INFRA-001-durable-hwm.md), [ADR.md § INFRA-001](./ADR.md#infra-001--durable-hwm), [ARCH-005-index-reconciliation-recovery.md](./ARCH-005-index-reconciliation-recovery.md), [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md), [16-glossary.md](./16-glossary.md).
+
+---
+
 ## Versión 1.1 — Mejoras planificadas (Placeholder)
 
 Estado: **Planificado**.
