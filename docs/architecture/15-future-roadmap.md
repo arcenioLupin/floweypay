@@ -27,13 +27,13 @@ Referencia: [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-
 
 ## Secuencia de tareas de persistencia (DB-001 → DB-006)
 
-El **diseño** de DB-001 está **aprobado** (D1–D16) y el de **DB-002** está **aprobado** (D1–D17); su **implementación** pertenece a DB-006 (y el Durable HWM a INFRA-001). DB-001 es el paso 1 del orden de implementación de [ARCH-005 D10](./ARCH-005-index-reconciliation-recovery.md#d10--implementation-order) ("Modelo de persistencia de wallet version") y establece el ancla `wallet_version_id`; **DB-002** materializa sobre esa ancla el **Allocation Ledger** y la relación `invoice ↔ wallet_version ↔ derivation_index` (consumo irrevocable de índice, dirección derivada autoritativa, atribución al invoice, discriminador `receiving_model` y el contrato del Durable HWM), sin rediseñar ninguna decisión ARCH ni DB-001.
+El **diseño** de DB-001 está **aprobado** (D1–D16), el de **DB-002** está **aprobado** (D1–D17) y el de **DB-003** está **aprobado** (D1–D17); su **implementación** pertenece a DB-006 (y el Durable HWM a INFRA-001). DB-001 es el paso 1 del orden de implementación de [ARCH-005 D10](./ARCH-005-index-reconciliation-recovery.md#d10--implementation-order) ("Modelo de persistencia de wallet version") y establece el ancla `wallet_version_id`; **DB-002** materializa sobre esa ancla el **Allocation Ledger** y la relación `invoice ↔ wallet_version ↔ derivation_index` (consumo irrevocable de índice, dirección derivada autoritativa, atribución al invoice, discriminador `receiving_model` y el contrato del Durable HWM), sin rediseñar ninguna decisión ARCH ni DB-001.
 
 ```mermaid
 flowchart TB
     DB001["DB-001 — diseño aprobado<br/>MerchantWallet + MerchantWalletVersion"]
     DB002["DB-002 — Allocation Ledger<br/>invoice ↔ wallet_version ↔ derivation_index"]
-    DB003["DB-003 — Recovery State + monitoring metadata"]
+    DB003["DB-003 — diseño aprobado<br/>Recovery State + monitoring metadata"]
     INFRA001["INFRA-001 — Durable HWM<br/>(persistencia independiente)"]
     DB004["DB-004 — Late Payment + Reconciliation"]
     DB006["DB-006 — migraciones / implementación"]
@@ -43,6 +43,8 @@ flowchart TB
 Referencia: [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [ADR.md § DB-001](./ADR.md#db-001--merchant-wallet--wallet-versions), [14 — Decisiones de arquitectura](./14-architecture-decisions.md).
 
 El **diseño** de **DB-002** (Allocation Ledger; D1–D17) está **aprobado** y ha dejado de ser un elemento planificado; su **implementación** pertenece a DB-006 (y el Durable HWM a INFRA-001). Referencia: [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [ADR.md § DB-002](./ADR.md#db-002--allocation-ledger).
+
+El **diseño** de **DB-003** (Recovery State + Descriptor Monitoring metadata; D1–D17) está **aprobado** (aprobado (diseño); implementación pendiente) y ha dejado de ser un elemento planificado; materializa, por wallet version, la **allocation-safety gate** (`MerchantWalletRecoveryState`) y la **monitoring-coverage claim** (`MerchantWalletDescriptorMonitoring`) que ARCH-005 D6/D7 presuponen. Su **implementación** pertenece a DB-006 (con el Durable HWM en INFRA-001 y el motor de reconciliación/monitoring en el Worker/runtime). Referencia: [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md), [ADR.md § DB-003](./ADR.md#db-003--recovery-state--descriptor-monitoring).
 
 ## Extensiones de protocolo
 

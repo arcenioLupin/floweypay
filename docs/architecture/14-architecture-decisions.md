@@ -150,4 +150,32 @@ Materializa el **Allocation Ledger** y la relación `invoice ↔ wallet_version 
 
 ---
 
+## DB-003 — Recovery State + Descriptor Monitoring
+
+> **Estado del diseño: Aprobado** (D1–D17). **Implementación: pendiente** (DB-006; Durable HWM en INFRA-001; motor de reconciliación/establecimiento y llamadas de Bitcoin Core en Worker/runtime). Documento dedicado: [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md).
+
+Materializa la persistencia operativa que ARCH-005/006 y DB-001/002 presuponen: **si** la asignación es segura y **qué** cobertura de Descriptor monitoring ha sido verificada, por wallet version. Dos entidades separadas y **1:1**: **`MerchantWalletRecoveryState`** (allocation-safety gate) y **`MerchantWalletDescriptorMonitoring`** (monitoring-coverage claim). **No** rediseña ninguna decisión ARCH ni DB-001/002.
+
+| Decisión | Por qué existe |
+|---|---|
+| **D1 — Dedicated operational entities** | La persistencia de recovery/monitoring **no** se coloca sobre `MerchantWalletVersion` (identidad de derivación inmutable); usa entidades operativas dedicadas. |
+| **D2 — Two-entity separation** | `MerchantWalletRecoveryState` (gate, baja frecuencia) y `MerchantWalletDescriptorMonitoring` (claim, más frecuente) **separadas**; la observabilidad de monitoring nunca se convierte silenciosamente en autoridad de asignación. |
+| **D3 — Cardinality** | Cada wallet version tiene **una** Recovery State y **una** Monitoring; ACTIVE y RETIRED; `wallet_version_id` como ancla 1:1 (PK/FK). |
+| **D4 — Recovery State machine** | **Exactamente** cuatro estados: `RECOVERY_REQUIRED`, `RECONCILING`, `READY`, `RECOVERY_FAILED` (los mismos identificadores de ARCH-005 D6); sin `PENDING`/`DISABLED`/`ARCHIVED`/`INITIALIZING`/`RECOVERING`. |
+| **D5 — Unified initial establishment / reconciliation** | Versión nueva inicia fail-closed (`RECOVERY_REQUIRED` + `INITIAL_ESTABLISHMENT`), no "recovering"; `READY` **solo** tras probar HWM baseline + `safe_next_index` + identidad de Descriptor (DB-001) + monitoring live-verificado; sin estado nuevo de onboarding. |
+| **D6 — Allocation gate** | Asignar solo si `lifecycle == ACTIVE AND recovery_state == READY`; consumido por DB-002; ambigüedad ⇒ fail-closed; RETIRED nunca asigna. |
+| **D7 — Monitoring boundaries** | ACTIVE `monitored_through_index >= safe_next_index + lookahead`; RETIRED `monitored_through_index >= HWM(V)` (derivado del Durable HWM; **sin** forward lookahead; **nunca** de `safe_next_index` ni de `MAX(ledger)`; **no** se escribe `HWM = safe_next_index - 1`). DB-003 no persiste HWM. |
+| **D8 — Minimal inline transition metadata** | `state_reason` + `state_changed_at` inline; **sin** tabla de historial/evento en P0. |
+| **D9 — Crash-safe reconciliation without run ID** | Seguridad vía `recovery_state` + `lock_version` + advisory lock por wallet version; `READY` solo tras prueba completa; `RECONCILING` interrumpido → `RECOVERY_REQUIRED` (`RECONCILE_INTERRUPTED`), nunca auto→`READY`; sin `reconciliation_run_id` P0; `reconciliation_started_at` opcional. |
+| **D10 — Monitoring metadata is observability** | Monitoring-coverage claim; `VERIFIED` no prueba por sí solo la cobertura del runtime; live-verificar donde la seguridad dependa de la cobertura. |
+| **D11 — Advance claim only after live verification** | `monitored_through_index` avanza **solo** tras verificar el motor de runtime; nunca inferir cobertura desde PostgreSQL; recreación/reemplazo de nodo invalida la reclamación → `STALE`/re-establecer. |
+| **D12 — Lookahead is configuration** | `lookahead` es configuración/política; **no** persistir `lookahead_size`; boundary ACTIVE recomputado desde `safe_next_index + lookahead`. |
+| **D13 — ACTIVE lookahead invariant** | Antes de asignación ACTIVE segura, el monitoring live debe satisfacer `monitored_through_index >= safe_next_index + lookahead`; una reclamación `VERIFIED` persistida por sí sola es insuficiente para `READY`. |
+| **D14 — No HWM mirror** | **No** persistir `HWM`, `safe_next_index`, `ledger_max`, `candidate_index`, `hwm_confirmed_at` ni equivalente; leídos/derivados de sus fuentes autoritativas en reconciliación. |
+| **D15 — Crash-safe monitoring extension without persisted target** | **No** persistir `import_target_through_index`; extensión idempotentemente re-ejecutable (recomputar ceiling + re-establecer + verificar + avanzar reclamación); distinguir el mecanismo de Bitcoin Core del requisito de arquitectura. |
+| **D16 — Concurrency** | `lock_version` optimista + advisory lock por wallet version para serializar establecimiento/reconciliación y monitoring; **no** sustituye el consumo atómico del Durable HWM. |
+| **D17 — Security / privacy** | Sin Seed/Private Keys; `state_reason` = código estructurado cerrado (vocabulario P0), extensible solo por cambio de esquema; `last_error` redactado; sin volcados RPC/excepción/descriptors/credenciales/rutas/secretos. |
+
+---
+
 **Siguiente:** [15 — Roadmap futuro](./15-future-roadmap.md)

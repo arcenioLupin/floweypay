@@ -116,6 +116,19 @@ Este documento permite que un desarrollador nuevo entienda la arquitectura de Fl
 - **Fuera de DB-002:** `recovery_state` + monitoring/lookahead (DB-003), tecnología/durabilidad del Durable HWM (INFRA-001), clasificación de Late Payment + conciliación del comercio (DB-004), esquema Prisma + enums + constraints + triggers + migraciones (DB-006), migración del Worker al matching por `Allocation.btc_address`.
 - Ver [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md).
 
+## Recovery State + Descriptor Monitoring (DB-003 — diseño aprobado)
+
+- Diseño **aprobado** (D1–D17); implementación **pendiente** (DB-006; Durable HWM en INFRA-001; motor de reconciliación/establecimiento y llamadas de Bitcoin Core en Worker/runtime).
+- **Dos entidades operativas separadas y 1:1** por wallet version, ancladas por `wallet_version_id` (PK/FK): **`MerchantWalletRecoveryState`** (la **allocation-safety gate**) y **`MerchantWalletDescriptorMonitoring`** (la **monitoring-coverage claim**). **No** se combinan y **no** se colocan sobre `MerchantWalletVersion`.
+- **Recovery State Machine** de **exactamente** cuatro estados: `RECOVERY_REQUIRED`, `RECONCILING`, `READY`, `RECOVERY_FAILED` (los mismos identificadores de ARCH-005 D6). Sin estados inventados.
+- **Establecimiento de seguridad inicial** unificado con la reconciliación: una versión nueva inicia fail-closed (`RECOVERY_REQUIRED` + `INITIAL_ESTABLISHMENT`), **no** semánticamente "recovering"; alcanza `READY` **solo** tras probar HWM baseline + `safe_next_index` + identidad de Descriptor (DB-001) + monitoring live-verificado.
+- **Allocation gate:** asignar solo si `lifecycle == ACTIVE AND recovery_state == READY` (consumido por el protocolo de DB-002); ambigüedad ⇒ fail-closed; RETIRED nunca asigna.
+- **Monitoring es una reclamación:** `monitoring_status = VERIFIED` no prueba por sí solo la cobertura del runtime; `monitored_through_index` avanza **solo** tras **live-verificación** contra el motor de runtime; nunca se infiere cobertura desde PostgreSQL. Bitcoin Core es el **effective runtime monitoring engine** (reconstruible; **no** autoridad durable).
+- **Boundary ACTIVE:** `monitored_through_index >= safe_next_index + lookahead`. **Boundary RETIRED:** `monitored_through_index >= HWM(V)` (derivado del Durable HWM; **sin** forward lookahead; **nunca** de `safe_next_index` ni de `MAX(ledger)`; **no** se escribe `HWM = safe_next_index - 1`).
+- **No HWM mirror:** DB-003 **no** persiste `HWM`, `safe_next_index`, `ledger_max`, `candidate_index`, `hwm_confirmed_at`, `lookahead_size` (configuración), `monitored_from_index`, `import_target_through_index` ni `reconciliation_run_id` (P0). Metadata mínima inline (`state_reason` + `state_changed_at`); crash-safety idempotente vía `lock_version` + advisory lock por wallet version; `RECONCILING` interrumpido → `RECOVERY_REQUIRED` (`RECONCILE_INTERRUPTED`), nunca auto→`READY`.
+- **Fuera de DB-003:** Durable HWM (INFRA-001), Allocation Ledger + `derivation_index` (DB-002), identidad/Descriptor (DB-001), Late Payment + conciliación (DB-004), esquema Prisma + enums + constraints + triggers + migraciones (DB-006), motor de reconciliación en runtime.
+- Ver [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md).
+
 ## Roadmap futuro
 
 - **ARCH-005 (diseño aprobado; implementación pendiente):** reconciliación de índices y Backup Recovery (Durable HWM, Allocation Ledger, fail-closed, Recovery State Machine).

@@ -56,6 +56,7 @@ flowchart LR
 | [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md) | Decisión ARCH-006 (D1–D12): Late Payments & Reconciliation. Diseño **aprobado**; implementación pendiente. |
 | [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md) | Diseño de persistencia DB-001 (D1–D16): Merchant Wallet + Wallet Versions. Diseño **aprobado**; implementación pendiente (DB-006). |
 | [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md) | Diseño de persistencia DB-002 (D1–D17): Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`). Diseño **aprobado**; implementación pendiente (DB-006 / INFRA-001). |
+| [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md) | Diseño de persistencia DB-003 (D1–D17): Recovery State + Descriptor Monitoring metadata (`MerchantWalletRecoveryState` + `MerchantWalletDescriptorMonitoring`). Aprobado (diseño); implementación pendiente (DB-006 / INFRA-001). |
 
 ### Especificación funcional (ARCH-004)
 

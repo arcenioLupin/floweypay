@@ -21,6 +21,7 @@ Estas tareas **construyen sobre** las decisiones ARCH aprobadas y las materializ
 |---|---|---|
 | [DB-001](#db-001--merchant-wallet--wallet-versions) | Merchant Wallet + Wallet Versions | Aprobado (diseño); implementación pendiente |
 | [DB-002](#db-002--allocation-ledger) | Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`) | Aprobado (diseño); implementación pendiente |
+| [DB-003](#db-003--recovery-state--descriptor-monitoring) | Recovery State + Descriptor Monitoring metadata | Aprobado (diseño); implementación pendiente |
 
 ---
 
@@ -180,3 +181,27 @@ Estas tareas **construyen sobre** las decisiones ARCH aprobadas y las materializ
 - **Documentación relacionada:** [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [ARCH-005-index-reconciliation-recovery.md](./ARCH-005-index-reconciliation-recovery.md), [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md), [04-payment-link-creation.md](./04-payment-link-creation.md), [06-bitcoin-processing.md](./06-bitcoin-processing.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md).
 - **Dependencias:** DB-001 (ancla `wallet_version_id`), ARCH-002 (derivación forward-only por invoice), ARCH-005 D1/D2/D4/D5/D10 (Allocation Ledger + Durable HWM + fail-closed + dominio por wallet version + orden de implementación), ARCH-006 D6/D12 (N transacciones por invoice; atribución por wallet version).
 - **Consideraciones futuras:** DB-003 (`recovery_state` + monitoring), INFRA-001 (tecnología del Durable HWM), DB-004 (clasificación de Late Payment + conciliación), DB-006 (esquema Prisma + enums + constraints + triggers + migraciones), migración del Worker al matching por `Allocation.btc_address`.
+
+---
+
+## DB-003 — Recovery State + Descriptor Monitoring
+
+- **Título:** Recovery State + Descriptor Monitoring metadata (`MerchantWalletRecoveryState` + `MerchantWalletDescriptorMonitoring`).
+- **Estado del diseño:** **Aprobado** (decisiones D1–D17). **Estado de implementación:** **Pendiente** (pertenece a DB-006; el Durable HWM a INFRA-001; el motor de reconciliación/establecimiento y las llamadas de Bitcoin Core al Worker/runtime).
+- **Prioridad:** P0.
+- **Resumen:**
+  - **Dos entidades operativas dedicadas** — la persistencia de recovery/monitoring **no** se coloca en `MerchantWalletVersion` (**D1**); `MerchantWalletRecoveryState` (allocation-safety gate) y `MerchantWalletDescriptorMonitoring` (monitoring-coverage claim) son **separadas** (**D2**).
+  - **Cardinalidad 1:1** por wallet version, ancladas por `wallet_version_id` (PK/FK); tanto ACTIVE como RETIRED las tienen (**D3**).
+  - **Recovery State Machine** de **exactamente** cuatro estados: `RECOVERY_REQUIRED`, `RECONCILING`, `READY`, `RECOVERY_FAILED` (los mismos identificadores de ARCH-005 D6); sin estados inventados (**D4**).
+  - **Establecimiento de seguridad inicial** unificado con reconciliación: nueva versión inicia fail-closed (`RECOVERY_REQUIRED` + `INITIAL_ESTABLISHMENT`); `READY` **solo** tras probar HWM baseline + `safe_next_index` + identidad de Descriptor (DB-001) + monitoring live-verificado; sin estado nuevo de onboarding (**D5**).
+  - **Allocation gate:** asignar solo si `lifecycle == ACTIVE AND recovery_state == READY`; consumido por DB-002; ambigüedad ⇒ fail-closed; RETIRED nunca asigna (**D6**).
+  - **Boundaries de monitoring:** ACTIVE `monitored_through_index >= safe_next_index + lookahead`; RETIRED `monitored_through_index >= HWM(V)` (derivado del Durable HWM; **sin** forward lookahead; **nunca** de `safe_next_index` ni de `MAX(ledger)`; **no** se escribe `HWM = safe_next_index - 1`) (**D7**).
+  - Metadata mínima inline `state_reason` + `state_changed_at`; sin tabla de historial P0 (**D8**). Crash-safety sin `reconciliation_run_id` persistido: `recovery_state` + `lock_version` + advisory lock por wallet version; `RECONCILING` interrumpido → `RECOVERY_REQUIRED` (`RECONCILE_INTERRUPTED`), nunca auto→`READY`; `reconciliation_started_at` opcional (**D9**).
+  - Monitoring metadata es **observabilidad/reclamación**; `VERIFIED` no prueba por sí solo la cobertura del runtime (**D10**); `monitored_through_index` avanza **solo** tras **live-verificación** contra el motor de runtime; nunca inferir cobertura desde PostgreSQL (**D11**).
+  - `lookahead` es **configuración**; no se persiste `lookahead_size` (**D12/D13**). **No HWM mirror**: no persistir `HWM`, `safe_next_index`, `ledger_max`, `candidate_index`, `hwm_confirmed_at` (**D14**). Extensión de monitoring crash-safe sin `import_target_through_index` persistido; idempotentemente re-ejecutable; distinguir mecanismo de Bitcoin Core del requisito de arquitectura (**D15**).
+  - Concurrencia: `lock_version` optimista + advisory lock por wallet version; **no** sustituye el consumo atómico del Durable HWM (**D16**).
+  - Seguridad/privacidad: sin Seed/Private Keys; `state_reason` es código estructurado cerrado; `last_error` redactado; sin secretos/descriptors/RPC crudos (**D17**).
+- **Documento dedicado:** [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md).
+- **Documentación relacionada:** [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [ARCH-005-index-reconciliation-recovery.md](./ARCH-005-index-reconciliation-recovery.md), [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md), [08-wallet-recovery.md](./08-wallet-recovery.md), [09-wallet-rotation.md](./09-wallet-rotation.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md).
+- **Dependencias:** DB-001 (ancla `wallet_version_id` + ciclo de vida ACTIVE/RETIRED), DB-002 (allocation gate consumida por el protocolo de asignación), ARCH-005 D4/D5/D6/D7 (fail-closed + dominio por wallet version + Recovery State Machine + invariante de lookahead), ARCH-006 D7/D12 (monitoring de versiones RETIRED para Late Payments), INFRA-001 (lectura del Durable HWM en reconciliación).
+- **Consideraciones futuras:** INFRA-001 (tecnología/durabilidad del Durable HWM), DB-004 (clasificación de Late Payment + conciliación), DB-006 (esquema Prisma + enums + constraints 1:1 + triggers + migraciones), motor de reconciliación/establecimiento en runtime, migración del Worker del matching por dirección exacta al monitoring por rango de Descriptor, `reconciliation_run_id` y tabla de historial de transiciones como observabilidad post-MVP.

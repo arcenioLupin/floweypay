@@ -78,6 +78,21 @@ Documentación asociada: [DB-002-allocation-ledger.md](./DB-002-allocation-ledge
 
 ---
 
+## Versión 1.6 — DB-003: Recovery State + Descriptor Monitoring (Diseño aprobado)
+
+Estado: **Aprobado (diseño); implementación pendiente**.
+
+Adición de diseño de persistencia (solo diseño; **no** representa implementación completada). Construye sobre ARCH-001…006, DB-001 y DB-002 sin rediseñarlas:
+
+- **DB-003** — Recovery State + Descriptor Monitoring metadata. Aprobadas las decisiones **D1–D17**: dos entidades operativas **separadas** y **1:1** por wallet version — `MerchantWalletRecoveryState` (la **allocation-safety gate**) y `MerchantWalletDescriptorMonitoring` (la **monitoring-coverage claim**), ancladas por `wallet_version_id` (PK/FK); **Recovery State Machine** de **exactamente** cuatro estados (`RECOVERY_REQUIRED`, `RECONCILING`, `READY`, `RECOVERY_FAILED`, los mismos identificadores de ARCH-005 D6); **establecimiento de seguridad inicial** unificado con la reconciliación (nueva versión inicia fail-closed `RECOVERY_REQUIRED` + `INITIAL_ESTABLISHMENT`; `READY` **solo** tras probar HWM baseline + `safe_next_index` + monitoring live-verificado); **allocation gate** = `lifecycle == ACTIVE AND recovery_state == READY` (RETIRED nunca asigna); boundaries de monitoring — ACTIVE: `monitored_through_index >= safe_next_index + lookahead`, RETIRED: `monitored_through_index >= HWM(V)` (derivado del Durable HWM; **sin** forward lookahead; **nunca** de `safe_next_index` ni de `MAX(ledger)`); `monitored_through_index` es una **reclamación** que solo avanza tras **live-verificación** contra el motor de runtime; Bitcoin Core como **effective runtime monitoring engine** reconstruible y **no** autoridad durable; concurrencia por `lock_version` optimista + advisory lock por wallet version; metadata mínima inline (`state_reason` + `state_changed_at`), sin tabla de historial P0; `state_reason` con **vocabulario estructurado cerrado**; crash-safety sin `reconciliation_run_id` ni `import_target_through_index` persistidos; sin Seed/Private Keys.
+- **DB-003 NO persiste** (por diseño): `HWM`, `safe_next_index`, `ledger_max`, `candidate_index`, `hwm_confirmed_at`, `lookahead_size`, `monitored_from_index`, `import_target_through_index`, `reconciliation_run_id` (P0) ni un duplicado del Descriptor canónico.
+- **Explícitamente fuera de DB-003:** Durable HWM/durabilidad (**INFRA-001**), Allocation Ledger + `derivation_index` (**DB-002**), identidad/Descriptor de wallet (**DB-001**), clasificación de Late Payment + conciliación (**DB-004**), esquema Prisma + enums + constraints + triggers + migraciones (**DB-006**), motor de reconciliación/establecimiento en runtime y llamadas de Bitcoin Core.
+- La **implementación** (modelos Prisma, enums, constraints 1:1, motor de reconciliación, monitoring por rango de Descriptor con live-verificación) **permanece pendiente**. Hoy el repositorio aún deriva direcciones desde una **única wallet compartida** de Bitcoin Core (`getnewaddress`), el Worker hace matching por **dirección exacta** contra `payments.btc_address`, y no existe ningún `recovery_state` ni metadata de Descriptor monitoring.
+
+Documentación asociada: [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md), [ADR.md § DB-003](./ADR.md#db-003--recovery-state--descriptor-monitoring), [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md), [16-glossary.md](./16-glossary.md).
+
+---
+
 ## Versión 1.1 — Mejoras planificadas (Placeholder)
 
 Estado: **Planificado**.
