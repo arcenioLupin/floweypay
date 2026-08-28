@@ -22,6 +22,7 @@ Estas tareas **construyen sobre** las decisiones ARCH aprobadas y las materializ
 | [DB-001](#db-001--merchant-wallet--wallet-versions) | Merchant Wallet + Wallet Versions | Aprobado (diseño); implementación pendiente |
 | [DB-002](#db-002--allocation-ledger) | Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`) | Aprobado (diseño); implementación pendiente |
 | [DB-003](#db-003--recovery-state--descriptor-monitoring) | Recovery State + Descriptor Monitoring metadata | Aprobado (diseño); implementación pendiente |
+| [DB-004](#db-004--late-payment--merchant-reconciliation) | Late Payment + Merchant Reconciliation (timing/amount + conciliación + evidencia de observación) | Aprobado (diseño); implementación pendiente |
 
 ### Tareas de infraestructura / seguridad
 
@@ -236,3 +237,28 @@ Estas tareas materializan mecanismos de infraestructura que las decisiones ARCH/
 - **Documentación relacionada:** [ARCH-005-index-reconciliation-recovery.md](./ARCH-005-index-reconciliation-recovery.md), [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md), [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md).
 - **Dependencias:** DB-001 (ancla `wallet_version_id`), ARCH-005 D2/D3/D4/D8/D10 (Durable HWM + Safety Range Burning + fail-closed + Recovery Package + orden de implementación), DB-002 D10/D11 (consumo atómico monotónico; `HWM(V) ≥ ledger_max(V)`), DB-003 D7 (`HWM(V)` como boundary de monitoring RETIRED).
 - **Consideraciones futuras:** provisión real de PostgreSQL dedicado + roles + PITR (infra), DB-006 (esquema/migraciones), motor de reconciliación/establecimiento en runtime, adapter de KV transaccional gestionado, standby síncrono / HA, host/región separados, aprobación multi-parte de recovery-admin (post-MVP hardening).
+
+---
+
+## DB-004 — Late Payment + Merchant Reconciliation
+
+- **Título:** Late Payment + Merchant Reconciliation — clasificación de timing/amount, conciliación del comercio y persistencia de la evidencia de observación on-chain (`PaymentReconciliation` + `ReconciliationAuditEvent` + extensión de `payment_btc_txs`).
+- **Estado del diseño:** **Aprobado** (decisiones D1–D16, con refinamiento **FINAL** en D7). **Estado de implementación:** **Pendiente** (esquema Prisma + enums + constraints + `UNIQUE(txid, vout_index)` físico + migraciones en DB-006; first-seen confiable, manejo de reorg, dejar de descartar tx a invoices `EXPIRED`, migración del matching, motor de clasificación y dispatch en Worker/runtime).
+- **Prioridad:** P0.
+- **Resumen:**
+  - **Granularidad de observación = outpoint** `(txid, vout_index)`; un `Payment` puede tener N outpoints; se **extiende** el `payment_btc_txs` existente en vez de crear una entidad paralela (**D1**).
+  - **`PaymentReconciliation` opcional 1:1** con `Payment`, creada **lazily** solo para `LATE`/`INDETERMINATE`; la **ausencia** significa **solo** "nunca entró al workflow", sin estado implícito (**D2**).
+  - **Timing** `ON_TIME | LATE | INDETERMINATE` (**D3**), **ortogonal** al **amount** `UNDERPAID | EXACT | OVERPAID` (**D4**); `INDETERMINATE` es un resultado conservador **válido**, no un fallo.
+  - **Lifecycle inmutable:** un invoice `EXPIRED` **permanece** `EXPIRED` aunque llegue BTC tarde (**D5**, ARCH-006 D1/D4).
+  - **First-seen confiable + provenance** persistidos para clasificación auditable/reproducible; el `detected_at` del Worker **no** es first-seen autoritativo automático; proveedor de runtime diferido, sin acople (**D6**).
+  - **Máquina de estados FINAL:** `REVIEW_REQUIRED → { ACCEPTED, REJECTED }`; "sin acción" = `REVIEW_REQUIRED` (nunca `REJECTED`); **sin** `DISMISSED`, **sin** `REFUNDED_EXTERNALLY` como estado; reapertura a `REVIEW_REQUIRED` solo por evidencia/reorg preservando el historial (**D7 FINAL**).
+  - **Historial de auditoría append-only** (acción, actor, timestamp, razón/contexto, reaperturas); el estado actual es una **proyección** (**D8**).
+  - **Unicidad target global `UNIQUE(txid, vout_index)`**, no debilitada a por-`Payment`; DB-006 posee inspección legacy + migración + remediación + creación física; **no** existe aún (**D9**).
+  - **Idempotencia:** observar el mismo outpoint repetidamente no crea atribución económica duplicada (**D10**). **Reorg** puede cambiar la proyección de cadena objetiva pero **no** borra el historial del comercio; `REORG_REVERTED` no es estado terminal permanente (**D11**).
+  - **Múltiples outpoints** se agregan para el amount pero se preservan individualmente; sin tx sintética (**D12**). **Rotación/RETIRED** conserva la atribución histórica; `RETIRED` bloquea nuevas asignaciones pero no invalida late payments/conciliación históricos (**D13**).
+  - DB-004 **no** es autoridad de Allocation Ledger, `derivation_index`, Durable HWM, `safe_next_index`, Recovery State ni Descriptor monitoring (**D14**). Legacy `SHARED_CUSTODIAL` **solo** usa evidencia que existe; sin `MerchantWalletVersion`/`WalletAddressAllocation`/`derivation_index` sintéticos (**D15**).
+  - **Boundary non-custodial/financiero:** persiste evidencia, clasificación, conciliación y auditoría; **no** introduce private keys, custodia, reembolsos automáticos, exchange, conversión fiat, settlement ni ledger financiero general (**D16**).
+- **Documento dedicado:** [DB-004-late-payment-merchant-reconciliation.md](./DB-004-late-payment-merchant-reconciliation.md).
+- **Documentación relacionada:** [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md), [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md), [INFRA-001-durable-hwm.md](./INFRA-001-durable-hwm.md), [05-customer-payment-flow.md](./05-customer-payment-flow.md), [06-bitcoin-processing.md](./06-bitcoin-processing.md), [07-merchant-dashboard.md](./07-merchant-dashboard.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md), [16-glossary.md](./16-glossary.md).
+- **Dependencias:** ARCH-006 D1–D12 (separación de dominios + timing/amount + conciliación + reorg + atribución por wallet version), DB-001 (ciclo de vida ACTIVE/RETIRED), DB-002 D2/D13/D14/D16/D20/D21 (atribución inmutable `Payment → Allocation → MerchantWalletVersion`, N tx por `Payment`, `receiving_model`), DB-003 D6/D7 (allocation-safety gate + monitoring de versiones RETIRED que habilita la detección de Late Payments), INFRA-001 (Durable HWM como entrada de solo lectura en la atribución).
+- **Consideraciones futuras:** DB-006 (esquema Prisma + enums + constraints + `UNIQUE(txid, vout_index)` físico + inspección/remediación legacy + migraciones + triggers de inmutabilidad), Worker/runtime (proveedor de first-seen confiable, manejo de reorg, dejar de descartar tx a invoices `EXPIRED`, migración del matching a `Allocation.btc_address`, motor de clasificación, dispatch de notificaciones de Late Payment), y post-MVP: ejecución de reembolsos, disputas, workflows de deep-reorg y contabilidad.

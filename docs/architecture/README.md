@@ -57,6 +57,7 @@ flowchart LR
 | [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md) | Diseño de persistencia DB-001 (D1–D16): Merchant Wallet + Wallet Versions. Diseño **aprobado**; implementación pendiente (DB-006). |
 | [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md) | Diseño de persistencia DB-002 (D1–D17): Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`). Diseño **aprobado**; implementación pendiente (DB-006 / INFRA-001). |
 | [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md) | Diseño de persistencia DB-003 (D1–D17): Recovery State + Descriptor Monitoring metadata (`MerchantWalletRecoveryState` + `MerchantWalletDescriptorMonitoring`). Aprobado (diseño); implementación pendiente (DB-006 / INFRA-001). |
+| [DB-004-late-payment-merchant-reconciliation.md](./DB-004-late-payment-merchant-reconciliation.md) | Diseño de persistencia DB-004 (D1–D16, con refinamiento FINAL en D7): Late Payment + Merchant Reconciliation — clasificación timing/amount ortogonal, `PaymentReconciliation` (lazy) + `ReconciliationAuditEvent` (append-only), first-seen confiable + provenance, `UNIQUE(txid, vout_index)` global. Aprobado (diseño); implementación pendiente (DB-006 / Worker-runtime). |
 | [INFRA-001-durable-hwm.md](./INFRA-001-durable-hwm.md) | Diseño de infraestructura/seguridad INFRA-001 (D1–D24, con refinamientos FINAL): Durable HWM (High-Water Mark) sobre una **instancia PostgreSQL dedicada** con ciclo de vida independiente del PostgreSQL operativo. Aprobado (diseño); implementación pendiente. |
 
 ### Especificación funcional (ARCH-004)
@@ -95,6 +96,7 @@ flowchart LR
 | **DB-001** | Merchant Wallet + Wallet Versions (persistencia) | Aprobado (diseño); implementación pendiente |
 | **DB-002** | Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`) | Aprobado (diseño); implementación pendiente |
 | **DB-003** | Recovery State + Descriptor Monitoring metadata | Aprobado (diseño); implementación pendiente |
+| **DB-004** | Late Payment + Merchant Reconciliation (timing/amount + conciliación + evidencia de observación) | Aprobado (diseño); implementación pendiente |
 | **INFRA-001** | Durable HWM (High-Water Mark) sobre instancia PostgreSQL dedicada | Aprobado (diseño); implementación pendiente |
 
 Ver el detalle completo en [ADR.md](./ADR.md).

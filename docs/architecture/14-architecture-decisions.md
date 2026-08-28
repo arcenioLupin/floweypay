@@ -213,4 +213,31 @@ Materializa la **infraestructura de durabilidad** del **Durable HWM** que ARCH-0
 
 ---
 
+## DB-004 — Late Payment + Merchant Reconciliation
+
+> **Estado del diseño: Aprobado** (D1–D16, con refinamiento **FINAL** en D7). **Implementación: pendiente** (esquema Prisma + enums + constraints + `UNIQUE(txid, vout_index)` físico + migraciones en DB-006; first-seen confiable, manejo de reorg, dejar de descartar tx a invoices `EXPIRED`, migración del matching, motor de clasificación y dispatch en Worker/runtime). **Prioridad:** P0. Documento dedicado: [DB-004-late-payment-merchant-reconciliation.md](./DB-004-late-payment-merchant-reconciliation.md).
+
+Materializa la persistencia que **ARCH-006** presupone: clasificar cada `Payment` por **timing** (`ON_TIME | LATE | INDETERMINATE`) y **amount** (`UNDERPAID | EXACT | OVERPAID`) como dimensiones **ortogonales**, persistir la **conciliación auditable del comercio** y persistir la **evidencia de observación on-chain** (first-seen confiable + provenance + estado de reorg). **No** rediseña ninguna decisión ARCH ni DB-001/002/003 ni INFRA-001.
+
+| Decisión | Por qué existe |
+|---|---|
+| **D1 — Bitcoin observation granularity** | Una observación persistida representa un **outpoint** `(txid, vout_index)`; un `Payment` puede tener N outpoints; se **extiende** el `payment_btc_txs` existente, no una entidad paralela. |
+| **D2 — Optional lazy PaymentReconciliation** | `PaymentReconciliation` opcional **1:1**, creada **lazily** solo para `LATE`/`INDETERMINATE`; la **ausencia** significa **solo** "nunca entró al workflow", sin estado implícito (aceptado/rechazado/conciliado/oculto/"no requerido"). |
+| **D3 — Persist timing classification** | Timing explícito `ON_TIME | LATE | INDETERMINATE`; `INDETERMINATE` es un resultado conservador **válido**, no un fallo técnico. |
+| **D4 — Amount classification orthogonal** | Amount independiente del timing: `UNDERPAID | EXACT | OVERPAID`; para múltiples outpoints usa el **agregado atribuido**; sin sobrecargar timing con amount. |
+| **D5 — Immutable Payment lifecycle history** | La conciliación es una dimensión separada; un invoice `EXPIRED` **permanece** `EXPIRED` (ARCH-006) aunque llegue BTC después. |
+| **D6 — Reliable first-seen + provenance** | Persistir first-seen confiable + provenance + metadata para clasificación auditable/reproducible; el `detected_at` del Worker **no** es first-seen autoritativo automático; proveedor de runtime diferido, sin acople; físico en DB-006. |
+| **D7 — FINAL reconciliation state machine** | `REVIEW_REQUIRED → { ACCEPTED, REJECTED }`; "sin acción" = `REVIEW_REQUIRED` (nunca `REJECTED`); **sin** `DISMISSED`; **sin** `REFUNDED_EXTERNALLY` como estado; reapertura a `REVIEW_REQUIRED` solo por evidencia/reorg, preservando el historial. |
+| **D8 — Append-only audit history** | Decisiones/acciones en historial **append-only** (acción, actor, timestamp, razón/contexto, reaperturas por evidencia); el estado actual es una proyección; el historial no se sobrescribe. |
+| **D9 — Global outpoint uniqueness** | Invariante target **`UNIQUE(txid, vout_index)` global**, no debilitada a por-`Payment`; DB-006 posee inspección legacy + migración segura + remediación + creación física; no existe aún. |
+| **D10 — Idempotent processing** | Ingesta/clasificación/actualización de la proyección idempotentes/recomputables; observar el mismo outpoint repetidamente no crea atribución económica duplicada. |
+| **D11 — Reorg orthogonal to merchant history** | Un reorg puede cambiar la proyección on-chain objetiva (`observation_status`, confirmaciones, bloque) pero **no** borra el historial append-only; `REORG_REVERTED` no es estado Bitcoin terminal permanente. |
+| **D12 — Multiple outpoints aggregate** | Múltiples outputs agregados para el amount pero **preservados individualmente**; sin colapsar en una tx sintética. |
+| **D13 — Wallet rotation preserves attribution** | La atribución histórica permanece válida cuando la `MerchantWalletVersion` pasa a `RETIRED` (vía DB-002); `RETIRED` bloquea nuevas asignaciones (DB-001) pero no invalida late payments/conciliación históricos. |
+| **D14 — No allocation authority** | DB-004 **no** es autoridad de asignación de `derivation_index`, `WalletAddressAllocation`, Durable HWM, `safe_next_index`, Recovery State ni Descriptor monitoring. |
+| **D15 — Legacy boundary** | Legacy `SHARED_CUSTODIAL` **solo** usa evidencia que existe; **sin** `MerchantWalletVersion`/`WalletAddressAllocation`/`derivation_index`/descriptor sintéticos; atribución legacy sobre `payments.btc_address` histórica donde la arquitectura upstream lo requiera. |
+| **D16 — Non-custodial / financial scope** | Persiste evidencia, clasificación, conciliación y auditoría; **no** introduce private keys, custodia, reembolsos automáticos, exchange, conversión fiat, settlement, contabilidad ni ledger financiero general. |
+
+---
+
 **Siguiente:** [15 — Roadmap futuro](./15-future-roadmap.md)
