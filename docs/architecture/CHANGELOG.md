@@ -122,6 +122,21 @@ Documentación asociada: [DB-004-late-payment-merchant-reconciliation.md](./DB-0
 
 ---
 
+## Versión 1.9 — DB-005: Wallet Audit / Wallet Lifecycle Change-History (Diseño aprobado)
+
+Estado: **Aprobado (diseño); implementación pendiente**.
+
+Adición de diseño de persistencia (solo diseño; **no** representa implementación completada). Construye sobre ARCH-001…006, DB-001, DB-002, DB-003, DB-004 e INFRA-001 sin rediseñarlas:
+
+- **DB-005** — Wallet Audit / Wallet Lifecycle Change-History. Aprobadas las decisiones **D1–D12** (Human Gate FINAL): **una** entidad append-only wallet-scoped `WalletAuditEvent` (**sin** audit log genérico/global ni framework polimórfico, **D1**), anclada a `merchant_wallet_id` con `from_wallet_version_id`/`to_wallet_version_id` nullable como **referencias** a versiones inmutables de DB-001 (**D2**); **taxonomía MVP FINAL** de **exactamente** `WALLET_CREATED` (`from=null`, `to=V1`) y `WALLET_ROTATED` (`from=Vn`, `to=Vn+1`), **sin** `VERSION_CREATED` (DB-001 no tiene estado pre-activación), `VERSION_ACTIVATED` (génesis ⊂ `WALLET_CREATED`) ni `VERSION_RETIRED` standalone (retiro ⊂ rotación; decommission diferido) (**D3**); **actor** `MERCHANT`/`SYSTEM`/`MIGRATION` + `actor_user_id` nullable descriptivo (nunca autorización), **sin** `ADMIN`/`WORKER`/`RECOVERY` (**D4**); **sin** snapshots before/after (**D5**); **nunca** persiste Descriptor/xpub/zpub/checksum/master fingerprint/derivation path/dirección/Seed/Private Key/signing material (**D6**); **append-only** estricto sin `UPDATE`/`DELETE`/`updated_at` (**D7**); **una** fila por operación lógica (rotación = un `WALLET_ROTATED`), **sin** `correlation_id`/`operation_id`, inserción esperada en la **misma transacción** que la mutación de ciclo de vida de DB-001 y **nunca** equiparada al `operation_id` del Durable HWM de INFRA-001 (**D8**); **invariante duro de autoridad** — observabilidad **únicamente**, nunca autoritativa para wallet/versión/derivación/Allocation Ledger/Durable HWM/Recovery State/Descriptor Monitoring/Payment/Merchant Reconciliation, y el estado actual **nunca** se reconstruye desde la auditoría (**D9**); retención **permanente** MVP sin purge/TTL/tiering (**D10**); **sin** fabricación de historia legacy `SHARED_CUSTODIAL` ni back-dating — la auditoría comienza en una operación real con procedencia `MIGRATION`/`SYSTEM` (**D11**); `reason_code` estructurado nullable no autoritativo, sin `note` libre en MVP, cifrado en reposo/backups como postura de plataforma (**D12**).
+- **Boundary DB-003:** la historia de transiciones de `recovery_state` y de Descriptor monitoring permanece en el dominio DB-003; **no** se crea un "wallet-everything event log" unificado.
+- **Explícitamente fuera de DB-005:** identidad/ciclo de vida autoritativo de wallet (**DB-001**), Allocation Ledger + `derivation_index` (**DB-002**), Recovery State + monitoring y su historia (**DB-003**), clasificación/conciliación de pagos (**DB-004**), Durable HWM (**INFRA-001**), esquema Prisma + enums + constraints + triggers + migraciones (**DB-006**), emisión de eventos en runtime.
+- La **implementación** (modelo Prisma `WalletAuditEvent`, enums `event_type`/`actor_type`/`reason_code`, FKs, CHECK por `event_type`, triggers de append-only, migraciones) **permanece pendiente**. Hoy el repositorio aún deriva direcciones desde una **única wallet compartida** de Bitcoin Core, no contiene `MerchantWallet`/`MerchantWalletVersion` y **no** existe ninguna historia de auditoría de ciclo de vida de wallet.
+
+Documentación asociada: [DB-005-wallet-audit-change-history.md](./DB-005-wallet-audit-change-history.md), [ADR.md § DB-005](./ADR.md#db-005--wallet-audit--wallet-lifecycle-change-history), [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [DB-004-late-payment-merchant-reconciliation.md](./DB-004-late-payment-merchant-reconciliation.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md), [16-glossary.md](./16-glossary.md).
+
+---
+
 ## Versión 1.1 — Mejoras planificadas (Placeholder)
 
 Estado: **Planificado**.

@@ -58,6 +58,7 @@ flowchart LR
 | [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md) | Diseño de persistencia DB-002 (D1–D17): Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`). Diseño **aprobado**; implementación pendiente (DB-006 / INFRA-001). |
 | [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md) | Diseño de persistencia DB-003 (D1–D17): Recovery State + Descriptor Monitoring metadata (`MerchantWalletRecoveryState` + `MerchantWalletDescriptorMonitoring`). Aprobado (diseño); implementación pendiente (DB-006 / INFRA-001). |
 | [DB-004-late-payment-merchant-reconciliation.md](./DB-004-late-payment-merchant-reconciliation.md) | Diseño de persistencia DB-004 (D1–D16, con refinamiento FINAL en D7): Late Payment + Merchant Reconciliation — clasificación timing/amount ortogonal, `PaymentReconciliation` (lazy) + `ReconciliationAuditEvent` (append-only), first-seen confiable + provenance, `UNIQUE(txid, vout_index)` global. Aprobado (diseño); implementación pendiente (DB-006 / Worker-runtime). |
+| [DB-005-wallet-audit-change-history.md](./DB-005-wallet-audit-change-history.md) | Diseño de persistencia DB-005 (D1–D12): Wallet Audit / Wallet Lifecycle Change-History — entidad append-only `WalletAuditEvent` (`WALLET_CREATED` / `WALLET_ROTATED`), actor `MERCHANT`/`SYSTEM`/`MIGRATION`, referencias `from`/`to` a versiones inmutables de DB-001, observabilidad únicamente. Aprobado (diseño); implementación pendiente (DB-006). |
 | [INFRA-001-durable-hwm.md](./INFRA-001-durable-hwm.md) | Diseño de infraestructura/seguridad INFRA-001 (D1–D24, con refinamientos FINAL): Durable HWM (High-Water Mark) sobre una **instancia PostgreSQL dedicada** con ciclo de vida independiente del PostgreSQL operativo. Aprobado (diseño); implementación pendiente. |
 
 ### Especificación funcional (ARCH-004)
@@ -97,6 +98,7 @@ flowchart LR
 | **DB-002** | Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`) | Aprobado (diseño); implementación pendiente |
 | **DB-003** | Recovery State + Descriptor Monitoring metadata | Aprobado (diseño); implementación pendiente |
 | **DB-004** | Late Payment + Merchant Reconciliation (timing/amount + conciliación + evidencia de observación) | Aprobado (diseño); implementación pendiente |
+| **DB-005** | Wallet Audit / Wallet Lifecycle Change-History (`WalletAuditEvent` append-only) | Aprobado (diseño); implementación pendiente |
 | **INFRA-001** | Durable HWM (High-Water Mark) sobre instancia PostgreSQL dedicada | Aprobado (diseño); implementación pendiente |
 
 Ver el detalle completo en [ADR.md](./ADR.md).

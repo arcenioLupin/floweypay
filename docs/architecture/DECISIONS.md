@@ -157,6 +157,21 @@ Este documento permite que un desarrollador nuevo entienda la arquitectura de Fl
 - **Fuera de DB-004:** esquema Prisma + enums + constraints + migraciones (**DB-006**), proveedor de first-seen/reorg/matching/clasificación/dispatch (**Worker/runtime**), Allocation Ledger + `derivation_index` (**DB-002**), Recovery State + monitoring (**DB-003**), identidad/Descriptor (**DB-001**), Durable HWM (**INFRA-001**).
 - Ver [DB-004-late-payment-merchant-reconciliation.md](./DB-004-late-payment-merchant-reconciliation.md).
 
+## Wallet Audit / Wallet Lifecycle Change-History (DB-005 — diseño aprobado)
+
+- Diseño **aprobado** (D1–D12, Human Gate FINAL); implementación **pendiente** (modelo Prisma + enums + FKs + CHECK por `event_type` + triggers de append-only + migraciones en DB-006; emisión de eventos en runtime dentro de la transacción de ciclo de vida).
+- Materializa la persistencia que DB-001 **no** provee: una **historia append-only** de las operaciones de ciclo de vida de `MerchantWallet` / `MerchantWalletVersion`. **No** rediseña ninguna decisión ARCH ni DB-001…DB-004 ni INFRA-001.
+- **Una** entidad wallet-scoped `WalletAuditEvent` (**D1**), anclada a `merchant_wallet_id`, con `from_wallet_version_id`/`to_wallet_version_id` nullable como **referencias** a versiones inmutables de DB-001 (**D2**). **Sin** audit log genérico/global ni framework polimórfico.
+- **Taxonomía MVP FINAL:** **exactamente** `WALLET_CREATED` (onboarding/bootstrap: `MerchantWallet` + `V1` ACTIVE; `from=null`, `to=V1`) y `WALLET_ROTATED` (rotación atómica; `from=Vn`, `to=Vn+1`) (**D3**). **Sin** `VERSION_CREATED` (DB-001 no tiene estado pre-activación), `VERSION_ACTIVATED` (génesis ⊂ `WALLET_CREATED`) ni `VERSION_RETIRED` standalone (retiro ⊂ `WALLET_ROTATED`; decommission diferido).
+- **Actor:** `MERCHANT` / `SYSTEM` / `MIGRATION` + `actor_user_id` nullable **descriptivo** (nunca autorización) (**D4**). **Sin** `ADMIN` (sin operación MVP), `WORKER` (componente, no actor) ni `RECOVERY` (contexto/razón).
+- **Sin** snapshots before/after (**D5**); **nunca** persiste Descriptor/xpub/zpub/checksum/master fingerprint/derivation path/dirección/Seed/Private Key/signing material (**D6**). **Append-only** estricto sin `UPDATE`/`DELETE`/`updated_at` (**D7**).
+- **Una** fila por operación lógica; **sin** `correlation_id`/`operation_id`; inserción esperada en la **misma transacción** PostgreSQL que la mutación de ciclo de vida de DB-001; **nunca** se reutiliza ni equipara al `operation_id` del Durable HWM de INFRA-001 (**D8**).
+- **Invariante duro de autoridad (D9):** `WalletAuditEvent` es **observabilidad únicamente**; **nunca** autoritativa para el estado de wallet/versión, la identidad de derivación, el Allocation Ledger, el Durable HWM, el Recovery State, el Descriptor Monitoring, el estado de `Payment` ni la Merchant Reconciliation; el estado actual **nunca** se reconstruye desde la auditoría.
+- Retención **permanente** MVP sin purge/archive/TTL/tiering (**D10**); **no** fabrica historia legacy `SHARED_CUSTODIAL` ni back-dating — si DB-006 crea una wallet/`V1` real, la auditoría comienza en esa operación con procedencia `MIGRATION`/`SYSTEM` (**D11**); `reason_code` estructurado nullable no autoritativo, sin `note` libre en MVP, cifrado en reposo/backups como postura de plataforma (**D12**).
+- **Boundary DB-003:** la historia de transiciones de `recovery_state` y de Descriptor monitoring permanece en el dominio DB-003; **no** se crea un "wallet-everything event log" unificado.
+- **Fuera de DB-005:** identidad/ciclo de vida autoritativo de wallet (**DB-001**), Allocation Ledger + `derivation_index` (**DB-002**), Recovery State + monitoring y su historia (**DB-003**), clasificación/conciliación de pagos (**DB-004**), Durable HWM (**INFRA-001**), esquema Prisma + enums + constraints + triggers + migraciones (**DB-006**), emisión de eventos en runtime.
+- Ver [DB-005-wallet-audit-change-history.md](./DB-005-wallet-audit-change-history.md).
+
 ## Roadmap futuro
 
 - **ARCH-005 (diseño aprobado; implementación pendiente):** reconciliación de índices y Backup Recovery (Durable HWM, Allocation Ledger, fail-closed, Recovery State Machine).

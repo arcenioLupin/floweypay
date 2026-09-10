@@ -23,6 +23,7 @@ Estas tareas **construyen sobre** las decisiones ARCH aprobadas y las materializ
 | [DB-002](#db-002--allocation-ledger) | Allocation Ledger (`invoice ↔ wallet_version ↔ derivation_index`) | Aprobado (diseño); implementación pendiente |
 | [DB-003](#db-003--recovery-state--descriptor-monitoring) | Recovery State + Descriptor Monitoring metadata | Aprobado (diseño); implementación pendiente |
 | [DB-004](#db-004--late-payment--merchant-reconciliation) | Late Payment + Merchant Reconciliation (timing/amount + conciliación + evidencia de observación) | Aprobado (diseño); implementación pendiente |
+| [DB-005](#db-005--wallet-audit--wallet-lifecycle-change-history) | Wallet Audit / Wallet Lifecycle Change-History (`WalletAuditEvent` append-only) | Aprobado (diseño); implementación pendiente |
 
 ### Tareas de infraestructura / seguridad
 
@@ -260,5 +261,27 @@ Estas tareas materializan mecanismos de infraestructura que las decisiones ARCH/
   - **Boundary non-custodial/financiero:** persiste evidencia, clasificación, conciliación y auditoría; **no** introduce private keys, custodia, reembolsos automáticos, exchange, conversión fiat, settlement ni ledger financiero general (**D16**).
 - **Documento dedicado:** [DB-004-late-payment-merchant-reconciliation.md](./DB-004-late-payment-merchant-reconciliation.md).
 - **Documentación relacionada:** [ARCH-006-late-payments-reconciliation.md](./ARCH-006-late-payments-reconciliation.md), [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md), [INFRA-001-durable-hwm.md](./INFRA-001-durable-hwm.md), [05-customer-payment-flow.md](./05-customer-payment-flow.md), [06-bitcoin-processing.md](./06-bitcoin-processing.md), [07-merchant-dashboard.md](./07-merchant-dashboard.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md), [16-glossary.md](./16-glossary.md).
+
+---
+
+## DB-005 — Wallet Audit / Wallet Lifecycle Change-History
+
+- **Título:** Wallet Audit / Wallet Lifecycle Change-History — historia append-only de las operaciones de ciclo de vida de `MerchantWallet` / `MerchantWalletVersion` (`WalletAuditEvent`).
+- **Estado del diseño:** **Aprobado** (decisiones D1–D12, Human Gate FINAL). **Estado de implementación:** **Pendiente** (modelo Prisma + enums + FKs + CHECK por `event_type` + triggers de append-only + migraciones en DB-006; emisión de eventos en runtime dentro de la transacción de ciclo de vida).
+- **Prioridad:** P1.
+- **Resumen:**
+  - **Una** entidad append-only wallet-scoped `WalletAuditEvent`; **sin** audit log genérico/global ni framework polimórfico (**D1**).
+  - Anclada a `merchant_wallet_id`; semántica de versión vía `from_wallet_version_id`/`to_wallet_version_id` (nullable), **referencias** a entidades inmutables de DB-001, sin duplicar identidad/material público (**D2**).
+  - **Taxonomía MVP FINAL:** **exactamente** `WALLET_CREATED` y `WALLET_ROTATED`; **sin** `VERSION_CREATED` (DB-001 no tiene estado pre-activación), `VERSION_ACTIVATED` (génesis ⊂ `WALLET_CREATED`) ni `VERSION_RETIRED` standalone (retiro ⊂ `WALLET_ROTATED`; decommission diferido) (**D3**).
+  - **Actor:** `MERCHANT` / `SYSTEM` / `MIGRATION` + `actor_user_id` nullable descriptivo; **sin** `ADMIN`/`WORKER`/`RECOVERY`; el actor **nunca** autoriza (**D4**).
+  - **Sin** snapshots before/after (**D5**); **nunca** persiste Descriptor/xpub/checksum/fingerprint/path/dirección/Seed/Private Key/signing material (**D6**).
+  - **Append-only** estricto: sin `UPDATE`/`DELETE`/`updated_at`; DB-005 define el invariante, DB-006 lo impone físicamente (**D7**).
+  - **Una** fila por operación lógica (rotación = un `WALLET_ROTATED`); **sin** `correlation_id`/`operation_id`; inserción en la **misma transacción** que la mutación de DB-001; nunca se equipara al `operation_id` del Durable HWM (**D8**).
+  - **Invariante duro de autoridad:** observabilidad **únicamente**; nunca autoritativa para wallet/versión/derivación/Allocation Ledger/Durable HWM/Recovery State/Descriptor Monitoring/Payment/Merchant Reconciliation; el estado actual **nunca** se reconstruye desde la auditoría (**D9**).
+  - Retención **permanente** MVP, sin purge/TTL/tiering (**D10**); **no** fabrica historia legacy ni back-dating (**D11**).
+  - `reason_code` estructurado nullable no autoritativo, sin `note` libre en MVP; cifrado en reposo/backups = postura de plataforma, no decisión de DB-005 (**D12**).
+  - **Boundary DB-003:** DB-005 **no** posee la historia de transiciones de `recovery_state` ni de Descriptor monitoring; **no** hay "wallet-everything event log".
+- **Documento dedicado:** [DB-005-wallet-audit-change-history.md](./DB-005-wallet-audit-change-history.md).
+- **Documentación relacionada:** [DB-001-merchant-wallet-wallet-versions.md](./DB-001-merchant-wallet-wallet-versions.md), [DB-002-allocation-ledger.md](./DB-002-allocation-ledger.md), [DB-003-recovery-state-descriptor-monitoring.md](./DB-003-recovery-state-descriptor-monitoring.md), [DB-004-late-payment-merchant-reconciliation.md](./DB-004-late-payment-merchant-reconciliation.md), [INFRA-001-durable-hwm.md](./INFRA-001-durable-hwm.md), [09-wallet-rotation.md](./09-wallet-rotation.md), [14-architecture-decisions.md](./14-architecture-decisions.md), [15-future-roadmap.md](./15-future-roadmap.md), [16-glossary.md](./16-glossary.md).
 - **Dependencias:** ARCH-006 D1–D12 (separación de dominios + timing/amount + conciliación + reorg + atribución por wallet version), DB-001 (ciclo de vida ACTIVE/RETIRED), DB-002 D2/D13/D14/D16/D20/D21 (atribución inmutable `Payment → Allocation → MerchantWalletVersion`, N tx por `Payment`, `receiving_model`), DB-003 D6/D7 (allocation-safety gate + monitoring de versiones RETIRED que habilita la detección de Late Payments), INFRA-001 (Durable HWM como entrada de solo lectura en la atribución).
 - **Consideraciones futuras:** DB-006 (esquema Prisma + enums + constraints + `UNIQUE(txid, vout_index)` físico + inspección/remediación legacy + migraciones + triggers de inmutabilidad), Worker/runtime (proveedor de first-seen confiable, manejo de reorg, dejar de descartar tx a invoices `EXPIRED`, migración del matching a `Allocation.btc_address`, motor de clasificación, dispatch de notificaciones de Late Payment), y post-MVP: ejecución de reembolsos, disputas, workflows de deep-reorg y contabilidad.
