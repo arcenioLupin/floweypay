@@ -5,7 +5,7 @@ import {
   getClientIp,
   rateLimitResponse,
 } from "@/lib/security/rateLimit";
-import { Prisma, payment_status } from "@prisma/client";
+import { Prisma, payment_status, receiving_model } from "@prisma/client";
 import {
   allocateBtcAddress,
   calcSatsFromFiat,
@@ -206,6 +206,7 @@ export async function POST(
 
             method: "BTC_ONCHAIN",
             status: "AWAITING_PAYMENT",
+            receiving_model: receiving_model.SHARED_CUSTODIAL,
 
             amount_cents: link.products.amount_cents,
             currency,
