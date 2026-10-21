@@ -94,25 +94,72 @@ export async function getDescriptorInfo(
   };
 }
 
-/** Derive external receive Address #0 from a canonical (ranged) descriptor. */
-export async function deriveAddress0(
-  canonicalDescriptor: string
+/**
+ * Upper bound (exclusive) of the BIP84 external-chain index domain.
+ * Non-hardened child indices are 0 <= i < 2^31.
+ */
+export const BIP84_EXTERNAL_INDEX_LIMIT = 2 ** 31; // 2_147_483_648
+
+/**
+ * True iff `index` is a usable BIP84 external-chain child index:
+ * a non-negative, safe integer strictly below 2^31. Rejects negatives,
+ * fractionals, NaN/Infinity, and unsafe (>2^53) values.
+ */
+export function isValidExternalIndex(index: number): boolean {
+  return (
+    typeof index === "number" &&
+    Number.isSafeInteger(index) &&
+    index >= 0 &&
+    index < BIP84_EXTERNAL_INDEX_LIMIT
+  );
+}
+
+/**
+ * Derive the external receive address at a specific external-chain `index`
+ * from a canonical (ranged) descriptor via node-level deriveaddresses.
+ *
+ * Node RPC only — never imports the descriptor into a wallet and never touches
+ * private keys. Fails closed (WalletRpcError) on any node/transport failure,
+ * out-of-domain index, or malformed response.
+ */
+export async function deriveAddressAtIndex(
+  canonicalDescriptor: string,
+  index: number
 ): Promise<string> {
+  if (!isValidExternalIndex(index)) {
+    throw new WalletRpcError(WALLET_RPC_ERROR_CODES.INPUT_INVALID);
+  }
+
   let addresses: string[];
   try {
     addresses = await btcRpcCall<string[]>("deriveaddresses", [
       canonicalDescriptor,
-      [0, 0],
+      [index, index],
     ]);
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
     throw new WalletRpcError(classifyRpcError(message));
   }
-  const address0 = addresses?.[0];
-  if (typeof address0 !== "string" || address0.length === 0) {
+
+  // A single-element [i, i] range must yield exactly one address.
+  if (!Array.isArray(addresses) || addresses.length !== 1) {
     throw new WalletRpcError(WALLET_RPC_ERROR_CODES.NODE_UNAVAILABLE);
   }
-  return address0;
+  const address = addresses[0];
+  if (typeof address !== "string" || address.length === 0) {
+    throw new WalletRpcError(WALLET_RPC_ERROR_CODES.NODE_UNAVAILABLE);
+  }
+  return address;
+}
+
+/**
+ * Derive external receive Address #0 from a canonical (ranged) descriptor.
+ * Backward-compatible wrapper that delegates to the indexed helper.
+ */
+export async function deriveAddress0(
+  canonicalDescriptor: string
+): Promise<string> {
+  return deriveAddressAtIndex(canonicalDescriptor, 0);
 }
 
 /** Authoritative node network from getblockchaininfo. Fails closed on error. */

@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import {
   getDescriptorInfo,
   deriveAddress0,
+  deriveAddressAtIndex,
+  isValidExternalIndex,
+  BIP84_EXTERNAL_INDEX_LIMIT,
   getNodeNetwork,
   WalletRpcError,
   WALLET_RPC_ERROR_CODES,
@@ -240,6 +243,125 @@ test("deriveAddress0: RPC error maps to a safe code", async () => {
   } finally {
     restoreFetch();
   }
+});
+
+// ─── deriveAddressAtIndex ─────────────────────────────────────────────────────
+
+test("deriveAddressAtIndex: derives at index 0", async () => {
+  const addr = "tb1qindex0address0000000000000000000000000";
+  let captured: unknown[] | undefined;
+  globalThis.fetch = (async (_url: string, init: { body: string }) => {
+    captured = JSON.parse(init.body).params;
+    return { ok: true, json: async () => ({ result: [addr] }) };
+  }) as unknown as typeof fetch;
+  try {
+    const result = await deriveAddressAtIndex(`${CANONICAL}#${CHECKSUM}`, 0);
+    assert.equal(result, addr);
+    assert.deepEqual(captured, [`${CANONICAL}#${CHECKSUM}`, [0, 0]]);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("deriveAddressAtIndex: derives at a positive index", async () => {
+  const addr = "tb1qindex7address0000000000000000000000000";
+  let captured: unknown[] | undefined;
+  globalThis.fetch = (async (_url: string, init: { body: string }) => {
+    captured = JSON.parse(init.body).params;
+    return { ok: true, json: async () => ({ result: [addr] }) };
+  }) as unknown as typeof fetch;
+  try {
+    const result = await deriveAddressAtIndex(`${CANONICAL}#${CHECKSUM}`, 7);
+    assert.equal(result, addr);
+    assert.deepEqual(captured, [`${CANONICAL}#${CHECKSUM}`, [7, 7]]);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("deriveAddressAtIndex: rejects negative / fractional / out-of-range / unsafe indices", async () => {
+  // No RPC must be issued for a domain-invalid index.
+  globalThis.fetch = (async () => {
+    throw new Error("fetch must not be called for invalid index");
+  }) as unknown as typeof fetch;
+  const invalidIndices = [
+    -1,
+    1.5,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    BIP84_EXTERNAL_INDEX_LIMIT, // 2^31 is out of range (exclusive upper bound)
+    Number.MAX_SAFE_INTEGER,
+  ];
+  try {
+    for (const idx of invalidIndices) {
+      await expectRpcError(
+        () => deriveAddressAtIndex(`${CANONICAL}#${CHECKSUM}`, idx),
+        WALLET_RPC_ERROR_CODES.INPUT_INVALID
+      );
+    }
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("deriveAddressAtIndex: accepts the max valid index 2^31 - 1", async () => {
+  const addr = "tb1qmaxindexaddress000000000000000000000000";
+  mockRpcResult([addr]);
+  try {
+    const result = await deriveAddressAtIndex(
+      `${CANONICAL}#${CHECKSUM}`,
+      BIP84_EXTERNAL_INDEX_LIMIT - 1
+    );
+    assert.equal(result, addr);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("deriveAddressAtIndex: malformed response (wrong length) fails closed", async () => {
+  mockRpcResult(["a", "b"]); // a single-element [i,i] range must yield exactly one
+  try {
+    await expectRpcError(
+      () => deriveAddressAtIndex(`${CANONICAL}#${CHECKSUM}`, 3),
+      WALLET_RPC_ERROR_CODES.NODE_UNAVAILABLE
+    );
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("deriveAddressAtIndex: empty array fails closed", async () => {
+  mockRpcResult([]);
+  try {
+    await expectRpcError(
+      () => deriveAddressAtIndex(`${CANONICAL}#${CHECKSUM}`, 3),
+      WALLET_RPC_ERROR_CODES.NODE_UNAVAILABLE
+    );
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("deriveAddressAtIndex: RPC error maps to a safe code", async () => {
+  mockRpcError(-5, "Invalid descriptor");
+  try {
+    await expectRpcError(
+      () => deriveAddressAtIndex(`${CANONICAL}#${CHECKSUM}`, 3),
+      WALLET_RPC_ERROR_CODES.INPUT_INVALID
+    );
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("isValidExternalIndex: domain boundaries", () => {
+  assert.equal(isValidExternalIndex(0), true);
+  assert.equal(isValidExternalIndex(1), true);
+  assert.equal(isValidExternalIndex(BIP84_EXTERNAL_INDEX_LIMIT - 1), true);
+  assert.equal(isValidExternalIndex(-1), false);
+  assert.equal(isValidExternalIndex(1.5), false);
+  assert.equal(isValidExternalIndex(BIP84_EXTERNAL_INDEX_LIMIT), false);
+  assert.equal(isValidExternalIndex(Number.NaN), false);
 });
 
 // ─── getNodeNetwork ───────────────────────────────────────────────────────────
