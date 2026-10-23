@@ -201,3 +201,90 @@ test("reject: empty wallet material", () => {
     WALLET_ERROR_CODES.INPUT_INVALID
   );
 });
+
+// ─── API-002 regression: full descriptor ZPUB/VPUB normalization ──────────────
+
+// Same key material as XPUB/ZPUB above, expressed as full wpkh() descriptors.
+const ZPUB_DESCRIPTOR = `wpkh([${FP}/84h/0h/0h]${ZPUB}/0/*)`;
+
+test("normalize: full wpkh descriptor with ZPUB normalizes the key to XPUB for Core", () => {
+  const r = normalizeOnboardingInput({
+    walletMaterial: ZPUB_DESCRIPTOR,
+    network: "MAINNET",
+  });
+  // The canonical body rewrites zpub -> xpub (identical underlying key).
+  assert.equal(r.descriptorBody, FULL_DESCRIPTOR);
+  // What we hand to Core must be the normalized (xpub) form, never the raw zpub.
+  assert.equal(r.descriptorForValidation, FULL_DESCRIPTOR);
+  assert.ok(!r.descriptorForValidation.includes(ZPUB));
+  // Key-origin metadata and external branch are preserved.
+  assert.equal(r.masterFingerprint, FP);
+  assert.equal(r.derivationPath, "m/84'/0'/0'/0/*");
+  assert.equal(r.account, 0);
+});
+
+test("normalize: a canonical xpub descriptor forwards the merchant's EXACT input (checksum-significant formatting preserved)", () => {
+  // Hardened apostrophe notation must survive unchanged so a Core-computed
+  // checksum over the original string still validates.
+  const apostropheDescriptor = `wpkh([${FP}/84'/0'/0']${XPUB}/0/*)`;
+  const r = normalizeOnboardingInput({
+    walletMaterial: apostropheDescriptor,
+    network: "MAINNET",
+  });
+  assert.equal(r.descriptorForValidation, apostropheDescriptor);
+});
+
+test("normalize: valid supplied checksum on a canonical descriptor is preserved for Core validation", () => {
+  const r = normalizeOnboardingInput({
+    walletMaterial: `${FULL_DESCRIPTOR}#qpzry9x8`,
+    network: "MAINNET",
+  });
+  assert.equal(r.suppliedChecksum, "qpzry9x8");
+  // Unchanged xpub key => exact raw string (with checksum) goes to Core.
+  assert.equal(r.descriptorForValidation, `${FULL_DESCRIPTOR}#qpzry9x8`);
+});
+
+test("normalize: supplied checksum on a ZPUB descriptor is re-attached to the normalized body (never silently dropped)", () => {
+  const r = normalizeOnboardingInput({
+    walletMaterial: `${ZPUB_DESCRIPTOR}#qpzry9x8`,
+    network: "MAINNET",
+  });
+  // The checksum rides along on the normalized xpub body so Core cryptographically
+  // rejects it on mismatch rather than minting a fresh one over the zpub string.
+  assert.equal(r.suppliedChecksum, "qpzry9x8");
+  assert.equal(r.descriptorForValidation, `${FULL_DESCRIPTOR}#qpzry9x8`);
+});
+
+test("reject: structurally malformed checksum format on a full descriptor", () => {
+  // Cryptographic checksum verification is Core's job; the pure parser only
+  // enforces the 8-char bech32 charset format.
+  expectError(
+    () =>
+      normalizeOnboardingInput({
+        walletMaterial: `${FULL_DESCRIPTOR}#not-8-chars!`,
+        network: "MAINNET",
+      }),
+    WALLET_ERROR_CODES.CHECKSUM_INVALID
+  );
+});
+
+test("reject: explicit multipath descriptor /<0;1>/*", () => {
+  expectError(
+    () =>
+      normalizeOnboardingInput({
+        walletMaterial: `wpkh([${FP}/84h/0h/0h]${XPUB}/<0;1>/*)`,
+        network: "MAINNET",
+      }),
+    WALLET_ERROR_CODES.UNSUPPORTED_SCRIPT
+  );
+});
+
+test("normalize: preserves fingerprint, account path, and external branch /0/*", () => {
+  const r = normalizeOnboardingInput({
+    walletMaterial: FULL_DESCRIPTOR,
+    network: "MAINNET",
+  });
+  assert.ok(r.descriptorBody.startsWith(`wpkh([${FP}/84h/0h/0h]`));
+  assert.ok(r.descriptorBody.endsWith("/0/*)"));
+  assert.equal(r.derivationPath, "m/84'/0'/0'/0/*");
+});

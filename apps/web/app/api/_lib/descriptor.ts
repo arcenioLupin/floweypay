@@ -47,9 +47,12 @@ export interface NormalizedDescriptor {
   descriptorBody: string;
   /**
    * Exact string to hand to Bitcoin Core for authoritative validation. For a
-   * full descriptor this is the merchant's original input (including any
-   * supplied checksum, so Core validates it before canonicalization). For a
-   * bare XPUB/ZPUB it is the rebuilt body (Core appends the checksum).
+   * full descriptor whose key is already canonical (xpub/tpub) this is the
+   * merchant's original input, so Core validates any supplied checksum against
+   * the unchanged string before canonicalization. For a full descriptor whose
+   * key was rewritten (zpub->xpub, vpub->tpub) and for a bare XPUB/ZPUB it is
+   * the normalized body; any supplied checksum is re-attached so Core rejects a
+   * non-matching one instead of silently minting a fresh checksum.
    */
   descriptorForValidation: string;
   /** Checksum supplied by the merchant on a full descriptor, else null. */
@@ -246,6 +249,10 @@ function parseExtendedPublicKey(key: string, network: BtcNet): ParsedXpub {
   return { canonicalXpub, version, depth, childNumber, isMainnet };
 }
 
+// An account-level xpub embeds only its own depth and child index, never its
+// full ancestry. The declared [fp/84h/coinh/accounth] key origin is therefore
+// merchant-asserted metadata: we cross-check the leaf account index below, but
+// we cannot cryptographically prove the parent purpose/coin-type derivation.
 function assertAccountLevelKey(parsed: ParsedXpub, account: number): void {
   // A BIP84 account-level key sits at depth 3 (m/84'/coin'/account').
   if (parsed.depth !== 3) {
@@ -382,10 +389,25 @@ function normalizeDescriptorInput(
   assertAccountLevelKey(parsed, account);
 
   const descriptorBody = `wpkh([${masterFingerprint}/84h/${coinType}h/${account}h]${parsed.canonicalXpub}/0/*)`;
+
+  // True only when a ZPUB/VPUB was rewritten (zpub->xpub, vpub->tpub); an
+  // already-canonical xpub/tpub key is byte-identical here.
+  const keyNormalized = parsed.canonicalXpub !== xpub;
+  // For a canonical xpub/tpub key, forward the merchant's EXACT descriptor so
+  // Core validates their supplied checksum against the unchanged string
+  // (hardened notation and fingerprint casing are checksum-significant). For a
+  // rewritten zpub/vpub key Core cannot parse the original, so hand it the
+  // normalized body instead; re-attaching any supplied checksum forces Core to
+  // reject a non-matching one rather than silently minting a fresh checksum.
+  const validationBody = keyNormalized ? descriptorBody : body;
+  const descriptorForValidation =
+    suppliedChecksum !== null
+      ? `${validationBody}#${suppliedChecksum}`
+      : validationBody;
+
   return {
     descriptorBody,
-    // Preserve the merchant's exact input so Core validates their checksum.
-    descriptorForValidation: raw,
+    descriptorForValidation,
     suppliedChecksum,
     masterFingerprint,
     derivationPath: `m/84'/${coinType}'/${account}'/0/*`,
