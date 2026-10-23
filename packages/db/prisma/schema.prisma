@@ -123,6 +123,8 @@ model users {
   merchant_wallets            merchant_wallets?
   wallet_audit_events         wallet_audit_events[]
   reconciliation_audit_events reconciliation_audit_events[]
+
+  merchant_wallet_onboarding_challenges merchant_wallet_onboarding_challenge[]
 }
 
 model login_codes {
@@ -513,4 +515,35 @@ model wallet_audit_events {
   actor           users?                    @relation(fields: [actor_user_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([merchant_wallet_id], map: "idx_wallet_audit_wallet_id")
+}
+
+// ============================================================================
+// API-001 - Merchant wallet onboarding challenge (ephemeral, single-use)
+// ============================================================================
+
+/// Ephemeral single-use Address #0 confirmation challenge. Preserves the
+/// validated canonical descriptor server-side so the client cannot substitute
+/// descriptor/network/address between validate and confirm. Not wallet state;
+/// pruned after consumption/expiry. Never stores seed/private material.
+/// Privacy-sensitive: descriptor/fingerprint are never returned or logged.
+model merchant_wallet_onboarding_challenge {
+  id                   String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  challenge_token_hash String             @unique
+  merchant_id          String             @db.Uuid
+  descriptor           String
+  descriptor_checksum  String
+  master_fingerprint   String
+  derivation_path      String
+  network              btc_network
+  script_type          wallet_script_type @default(P2WPKH)
+  address0             String
+  expires_at           DateTime           @db.Timestamptz(6)
+  consumed_at          DateTime?          @db.Timestamptz(6)
+  attempts             Int                @default(0)
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+
+  merchant users @relation(fields: [merchant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([merchant_id, created_at(sort: Desc)], map: "idx_onboarding_challenge_merchant_created")
+  @@index([expires_at], map: "idx_onboarding_challenge_expires_at")
 }
