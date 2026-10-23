@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test lib/security/rateLimit.test.ts lib/security/origin.test.ts app/api/_lib/btc.test.ts app/api/_lib/btcRateService.test.ts app/api/_lib/descriptor.test.ts app/api/_lib/walletRpc.test.ts app/api/_lib/addressAllocation.test.ts app/api/_lib/walletOnboarding.test.ts \"app/api/public/payment-links/[token]/start/route.test.ts\" app/api/payments/route.test.ts app/api/dashboard/stats/route.test.ts app/api/dashboard/chart/daily/route.test.ts app/api/wallet/onboard/validate/route.test.ts app/api/wallet/onboard/confirm/route.test.ts"
+    "test": "tsx --test lib/security/rateLimit.test.ts lib/security/origin.test.ts app/api/_lib/btc.test.ts app/api/_lib/btcRateService.test.ts app/api/_lib/descriptor.test.ts app/api/_lib/walletRpc.test.ts app/api/_lib/addressAllocation.test.ts app/api/_lib/walletOnboarding.test.ts \"app/api/public/payment-links/[token]/start/route.test.ts\" app/api/payments/route.test.ts app/api/dashboard/stats/route.test.ts app/api/dashboard/chart/daily/route.test.ts app/api/wallet/onboard/validate/route.test.ts app/api/wallet/onboard/confirm/route.test.ts app/api/wallet/config/route.test.ts"
   },
   "dependencies": {
     "@floweypay/db": "*",
